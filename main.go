@@ -20,16 +20,17 @@ var (
 	dosesUrl = flag.String("dosesUrl", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
 
-	add = flag.Bool("add", false, "get|add|rm")
-	rm  = flag.Bool("rm", false, "get|add|rm")
+	add = flag.Bool("add", false, "Set to add a dose")
+	rm  = flag.Bool("rm", false, "Set to remove the last dose")
+	j   = flag.Bool("j", false, "Set for json output")
 	g   = flag.String("g", "", "filter for text")
-	n   = flag.Int("n", 5, "tail last x lines")
+	n   = flag.Int("n", 5, "Show last n doses, -1 = all")
 
 	aTimezone = flag.String("timezone", "", "Set timezone")
 	aDate     = flag.String("date", "", "Set date (defaults to now)")
 	aTime     = flag.String("time", "", "Set time (defaults to now)")
-	aDosage   = flag.String("dose", "", "Set dosage")
-	aDrug     = flag.String("drug", "", "Set drug name")
+	aDosage   = flag.String("a", "", "Set dosage")
+	aDrug     = flag.String("d", "", "Set drug name")
 	aRoa      = flag.String("roa", "", "Set RoA")
 	aNote     = flag.String("note", "", "Add note")
 )
@@ -97,13 +98,13 @@ func main() {
 		dosesStr := getDoses(doses)
 
 		if *g == "" {
-			fmt.Printf("%s", Tail(dosesStr, *n))
+			fmt.Printf("%s", dosesStr)
 		} else {
 			fmt.Printf("not implemented yet!")
 		}
 	case "rm":
 		doses = SliceRemoveIndex(doses, len(doses)-1)
-		fmt.Printf("%s", Tail(getDoses(doses), *n))
+		fmt.Printf("%s", getDoses(doses))
 
 		if !saveFile(doses) {
 			return
@@ -160,10 +161,18 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", Tail(getDoses(doses), *n))
+		fmt.Printf("%s", getDoses(doses))
 	default:
 		fmt.Printf("Not a valid `mode`!")
 	}
+}
+
+func jsonDoses(doses []Dose) (string, error) {
+	b, err := json.MarshalIndent(doses, "", "    ")
+	if err != nil {
+		fmt.Printf("error marshalling json: %v", b)
+	}
+	return string(b), err
 }
 
 func saveFile(doses []Dose) (r bool) {
@@ -174,13 +183,12 @@ func saveFile(doses []Dose) (r bool) {
 
 	u := strings.Replace(*dosesUrl, "media", "public/media", 1)
 
-	b, err := json.MarshalIndent(doses, "", "    ")
-	if err != nil {
-		fmt.Printf("error marshalling json: %v", b)
+	j, err := jsonDoses(doses)
+	if err != nil { // handled by jsonDoses
 		return false
 	}
 
-	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {string(b)}}.Encode()))
+	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {j}}.Encode()))
 	if err != nil {
 		fmt.Printf("failed to make new request: %v", err)
 		return false
@@ -190,19 +198,19 @@ func saveFile(doses []Dose) (r bool) {
 	req.Header.Set("Auth", *urlToken)
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("error posting body: %v", b)
+		fmt.Printf("error posting body: %s", j)
 		return false
 	}
 
 	if response.StatusCode != 200 {
 		defer response.Body.Close()
-		b, err = io.ReadAll(response.Body)
+		b, err := io.ReadAll(response.Body)
 		if err != nil {
 			fmt.Printf("failed to read body (code %v): %v", response.StatusCode, err)
 			return false
 		}
 
-		fmt.Printf("status code was %v:\n%s", response.StatusCode, response.Body)
+		fmt.Printf("status code was %v:\n%s", response.StatusCode, b)
 		return false
 	}
 
@@ -210,11 +218,24 @@ func saveFile(doses []Dose) (r bool) {
 }
 
 func getDoses(doses []Dose) string {
-	dosesStr := ""
-	for _, dose := range doses {
-		dosesStr += dose.String() + "\n"
+	if *j {
+		if *n > len(doses) {
+			*n = len(doses)
+		}
+
+		j, err := jsonDoses(doses[len(doses)-*n:])
+		if err != nil {
+			return ""
+		}
+
+		return j
+	} else {
+		dosesStr := ""
+		for _, dose := range doses {
+			dosesStr += dose.String() + "\n"
+		}
+		return Tail(dosesStr, *n)
 	}
-	return dosesStr
 }
 
 func SliceRemoveIndex[T comparable](s []T, i int) []T {
