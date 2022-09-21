@@ -29,7 +29,7 @@ var (
 	aTimezone = flag.String("timezone", "", "Set timezone")
 	aDate     = flag.String("date", "", "Set date (defaults to now)")
 	aTime     = flag.String("time", "", "Set time (defaults to now)")
-	aDosage   = flag.String("dosage", "", "Set dosage")
+	aDosage   = flag.String("dose", "", "Set dosage")
 	aDrug     = flag.String("drug", "", "Set drug name")
 	aRoa      = flag.String("roa", "", "Set RoA")
 	aNote     = flag.String("note", "", "Add note")
