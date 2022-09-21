@@ -112,13 +112,18 @@ func main() {
 			*aDrug = caser.String(*aDrug)
 		}
 
-		timezone := "EDT"
+		timezone := "America/Toronto"
 		if *aTimezone == "" {
 			if len(doses) > 0 {
 				timezone = doses[len(doses)-1].Timezone
 			}
 		} else {
 			timezone = *aTimezone
+		}
+
+		_, err := time.LoadLocation(timezone)
+		if err != nil {
+			fmt.Printf("failed to load location: %v", err)
 		}
 
 		if *aDate == "" {
