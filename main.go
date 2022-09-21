@@ -135,7 +135,7 @@ func main() {
 		}
 
 		if *aRoa == "" {
-			*aRoa = "Unknown RoA"
+			*aRoa = "Oral"
 		} else {
 			*aRoa = caser.String(*aRoa)
 		}
