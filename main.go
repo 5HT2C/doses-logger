@@ -80,7 +80,7 @@ func main() {
 	var doses []Dose
 	err = json.Unmarshal(b, &doses)
 	if err != nil {
-		fmt.Printf("failed to unmarshal doses: \n%s\n%v", TailLinesLimit(string(b), 2024), err)
+		fmt.Printf("failed to unmarshal doses: \n%s\n%v", b, err)
 		return
 	}
 
@@ -94,12 +94,16 @@ func main() {
 
 	switch mode {
 	case "get":
+		dosesStr := getDoses(doses)
+
 		if *g == "" {
-			fmt.Printf("%s", TailLinesLimit(Tail(getDoses(doses), *n), 2040))
+			fmt.Printf("%s", Tail(dosesStr, *n))
+		} else {
+			fmt.Printf("not implemented yet!")
 		}
 	case "rm":
 		doses = SliceRemoveIndex(doses, len(doses)-1)
-		fmt.Printf("%s", TailLinesLimit(Tail(getDoses(doses), *n), 2040))
+		fmt.Printf("%s", Tail(getDoses(doses), *n))
 
 		if !saveFile(doses) {
 			return
@@ -156,7 +160,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", TailLinesLimit(Tail(getDoses(doses), *n), 2040))
+		fmt.Printf("%s", Tail(getDoses(doses), *n))
 	default:
 		fmt.Printf("Not a valid `mode`!")
 	}
@@ -239,39 +243,6 @@ func Tail(s string, n int) string {
 	SliceReverse(newLines)
 
 	return strings.Join(newLines, "\n")
-}
-
-// TailLinesLimit will take the last amount of lines that fit into the X char limit
-func TailLinesLimit(s string, limit int) string {
-	lines := strings.Split(s, "\n")
-
-	// We don't have any lines to work with - just do a raw char limit
-	if len(lines) <= 1 {
-		if limit > len(s) { // Don't slice out of bounds
-			limit = len(s)
-		}
-		return s[:limit]
-	}
-
-	// Reverse the order of the lines, we want to Tail them
-	SliceReverse(lines)
-
-	reached := 0
-	tailedLines := make([]string, 0)
-	for _, line := range lines {
-		if len(line)+reached <= limit {
-			reached += len(line)
-			reached += 1 // for newline
-			tailedLines = append(tailedLines, line)
-		} else {
-			break
-		}
-	}
-
-	// Undo the reverse sort
-	SliceReverse(tailedLines)
-
-	return strings.Join(tailedLines, "\n")
 }
 
 // SliceReverse will reverse the order of s
