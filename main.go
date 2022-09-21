@@ -21,9 +21,10 @@ var (
 	dosesUrl = flag.String("dosesUrl", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
 
-	mode = flag.String("mode", "get", "get|add|rm")
-	g    = flag.String("g", "", "filter for text")
-	n    = flag.Int("n", 5, "tail last x lines")
+	add = flag.Bool("add", false, "get|add|rm")
+	rm  = flag.Bool("rm", false, "get|add|rm")
+	g   = flag.String("g", "", "filter for text")
+	n   = flag.Int("n", 5, "tail last x lines")
 
 	aTimezone = flag.String("timezone", "", "Set timezone")
 	aDate     = flag.String("date", "", "Set date (defaults to now)")
@@ -84,7 +85,15 @@ func main() {
 		return
 	}
 
-	switch *mode {
+	mode := "get"
+
+	if *add {
+		mode = "add"
+	} else if *rm {
+		mode = "rm"
+	}
+
+	switch mode {
 	case "get":
 		if *g == "" {
 			fmt.Printf("%s", TailLinesLimit(Tail(getDoses(doses), *n), 2040))
