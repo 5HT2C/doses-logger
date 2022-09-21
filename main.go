@@ -121,17 +121,17 @@ func main() {
 			timezone = *aTimezone
 		}
 
-		_, err := time.LoadLocation(timezone)
+		loc, err := time.LoadLocation(timezone)
 		if err != nil {
 			fmt.Printf("failed to load location: %v", err)
 		}
 
 		if *aDate == "" {
-			*aDate = time.Now().Format("2006/01/02")
+			*aDate = time.Now().In(loc).Format("2006/01/02")
 		}
 
 		if *aTime == "" {
-			*aTime = time.Now().Format("15:04")
+			*aTime = time.Now().In(loc).Format("15:04")
 		}
 
 		if *aRoa == "" {
