@@ -7,7 +7,6 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -160,7 +159,7 @@ func main() {
 
 func saveFile(doses []Dose) (r bool) {
 	if *urlToken == "" {
-		log.Printf("`-token` not set!")
+		fmt.Printf("`-token` not set!")
 		return false
 	}
 
@@ -168,13 +167,13 @@ func saveFile(doses []Dose) (r bool) {
 
 	b, err := json.MarshalIndent(doses, "", "    ")
 	if err != nil {
-		log.Printf("error marshalling json: %v", b)
+		fmt.Printf("error marshalling json: %v", b)
 		return false
 	}
 
 	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {string(b)}}.Encode()))
 	if err != nil {
-		log.Printf("failed to make new request: %v", err)
+		fmt.Printf("failed to make new request: %v", err)
 		return false
 	}
 
@@ -182,7 +181,7 @@ func saveFile(doses []Dose) (r bool) {
 	req.Header.Set("Auth", *urlToken)
 	response, err := client.Do(req)
 	if err != nil {
-		log.Printf("error posting body: %v", b)
+		fmt.Printf("error posting body: %v", b)
 		return false
 	}
 
@@ -194,7 +193,7 @@ func saveFile(doses []Dose) (r bool) {
 			return false
 		}
 
-		log.Printf("status code was %v:\n%s", response.StatusCode, response.Body)
+		fmt.Printf("status code was %v:\n%s", response.StatusCode, response.Body)
 		return false
 	}
 
