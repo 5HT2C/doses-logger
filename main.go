@@ -48,7 +48,7 @@ type Dose struct { // timezone,date,time,dosage,drug,roa,note
 func (d Dose) String() string {
 	note := ""
 	if d.Note != "" {
-		note = ", " + d.Note
+		note = ", Note: " + d.Note
 	}
 
 	dosage := ""
