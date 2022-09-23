@@ -114,7 +114,9 @@ func main() {
 			fmt.Printf("`-drug` is not set!")
 			return
 		} else {
-			*aDrug = caser.String(*aDrug)
+			if *aDrug != strings.ToUpper(*aDrug) {
+				*aDrug = caser.String(*aDrug)
+			}
 		}
 
 		timezone := "America/Toronto"
