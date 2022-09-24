@@ -221,7 +221,7 @@ func saveFile(doses []Dose) (r bool) {
 
 func getDoses(doses []Dose) string {
 	if *j {
-		if *n > len(doses) {
+		if *n > len(doses) || *n < len(doses) {
 			*n = len(doses)
 		}
 
