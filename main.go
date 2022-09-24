@@ -17,7 +17,7 @@ var (
 	caser  = cases.Title(language.English)
 	client = http.DefaultClient
 
-	dosesUrl = flag.String("dosesUrl", "http://localhost:6010/media/doses.json", "URL for doses.json")
+	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
 
 	add = flag.Bool("add", false, "Set to add a dose")
