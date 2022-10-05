@@ -245,7 +245,7 @@ func SliceRemoveIndex[T comparable](s []T, i int) []T {
 }
 
 func Tail(s string, n int) string {
-	if n == -1 {
+	if n < 0 {
 		return s
 	}
 
