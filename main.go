@@ -19,6 +19,7 @@ var (
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
+	perFmt   = flag.Bool("perFmt", false, "Replace single percentage signs with two")
 
 	add = flag.Bool("add", false, "Set to add a dose")
 	rm  = flag.Bool("rm", false, "Set to remove the last dose")
@@ -56,11 +57,7 @@ func (d Dose) String() string {
 		dosage = " " + d.Dosage
 	}
 
-	return fmt.Sprintf("%s %s%s %s, %s%s", d.Date, d.Time, dosage, d.Drug, d.RoA, note)
-}
-
-func (d Dose) Json() string {
-	return fmt.Sprintf(`{"timezone": "%s", "date": "%s", "time": "%s", "dosage": "%s", "drug": "%s", "roa": "%s", "note": "%s"}`, d.Timezone, d.Date, d.Time, d.Dosage, d.Drug, d.RoA, d.Note)
+	return pFmt(fmt.Sprintf("%s %s%s %s, %s%s", d.Date, d.Time, dosage, d.Drug, d.RoA, note))
 }
 
 func main() {
@@ -95,31 +92,28 @@ func main() {
 
 	switch mode {
 	case "get":
-		dosesStr := getDoses(doses)
-
 		if *g == "" {
-			fmt.Printf("%s", dosesStr)
+			fmt.Printf("%s", getDoses(doses))
 		} else {
 			fmt.Printf("not implemented yet!")
 		}
 	case "rm":
 		doses = SliceRemoveIndex(doses, len(doses)-1)
-		fmt.Printf("%s", getDoses(doses))
 
 		if !saveFile(doses) {
 			return
 		}
+
+		fmt.Printf("%s", getDoses(doses))
 	case "add":
 		if *aDrug == "" {
 			fmt.Printf("`-drug` is not set!")
 			return
 		} else {
-			if *aDrug != strings.ToUpper(*aDrug) {
-				*aDrug = caser.String(*aDrug)
-			}
+			*aDrug = caseFmt(*aDrug)
 		}
 
-		timezone := "America/Toronto"
+		timezone := "America/Toronto" // Default timezone. TODO: Proper handling / ask user for default.
 		if *aTimezone == "" {
 			if len(doses) > 0 {
 				timezone = doses[len(doses)-1].Timezone
@@ -142,9 +136,9 @@ func main() {
 		}
 
 		if *aRoa == "" {
-			*aRoa = "Oral"
+			*aRoa = "Oral" // Default RoA. TODO: Proper handling / ask user for default.
 		} else {
-			*aRoa = caser.String(*aRoa)
+			*aRoa = caseFmt(*aRoa)
 		}
 
 		dose := Dose{
@@ -167,6 +161,30 @@ func main() {
 	default:
 		fmt.Printf("Not a valid `mode`!")
 	}
+}
+
+func caseFmt(s string) string {
+	if s == "" {
+		return s
+	}
+
+	// If it Starts with a lowercase letter, uppercase it.
+	// TODO: This will not work for something like 3-HO-PCP. Need better solution.
+	// Simply checking for a number isn't enough, as 4-PrO-DMT wouldn't work.
+	// A database of drug names or using the user's last casing when unsure would probably be the way to go.
+	if s[:1] != strings.ToUpper(s[:1]) {
+		return caser.String(s)
+	}
+
+	return s
+}
+
+func pFmt(s string) string {
+	if !*perFmt || s == "" {
+		return s
+	}
+
+	return strings.ReplaceAll(s, "%", "%%")
 }
 
 func jsonDoses(doses []Dose) (string, error) {
