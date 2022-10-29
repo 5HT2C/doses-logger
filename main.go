@@ -28,7 +28,7 @@ var (
 	perFmt   = flag.Bool("perFmt", false, "Replace single percentage signs with two")
 
 	add = flag.Bool("add", false, "Set to add a dose")
-	rm  = flag.Bool("rm", false, "Set to remove the last dose")
+	rm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
 	j   = flag.Bool("j", false, "Set for json output")
 	g   = flag.String("g", "", "filter for text")
 	n   = flag.Int("n", 5, "Show last n doses, -1 = all")
@@ -117,7 +117,7 @@ func main() {
 		}
 
 		for n2, dose := range doses {
-			dose.Position = n2
+			doses[n2].Position = n2
 
 			t, err := dose.ParsedTime()
 			if err == nil {
@@ -159,7 +159,20 @@ func main() {
 			fmt.Printf("not implemented yet!")
 		}
 	case "rm":
-		doses = SliceRemoveIndex(doses, len(doses)-1)
+		pos, posIndex := -1, -1
+
+		for n1, dose := range doses {
+			if dose.Position > pos {
+				pos = dose.Position
+				posIndex = n1
+			}
+		}
+
+		if pos == -1 || posIndex == -1 {
+			doses = SliceRemoveIndex(doses, len(doses)-1)
+		} else if len(doses) > posIndex {
+			doses = SliceRemoveIndex(doses, posIndex)
+		}
 
 		if !saveFile(doses, *dosesUrl) {
 			return
