@@ -53,7 +53,7 @@ type UserPreferences struct {
 }
 
 type Dose struct { // timezone,date,time,dosage,drug,roa,note
-	Position  int64     `json:"position,omitempty"` // order added
+	Position  int       `json:"position,omitempty"` // order added
 	Timestamp time.Time `json:"timestamp,omitempty"`
 	Timezone  string    `json:"timezone,omitempty"`
 	Date      string    `json:"date,omitempty"`
@@ -117,6 +117,8 @@ func main() {
 		}
 
 		for n2, dose := range doses {
+			dose.Position = n2
+
 			t, err := dose.ParsedTime()
 			if err == nil {
 				doses[n2].Timestamp = t
@@ -228,6 +230,7 @@ func main() {
 		}
 
 		dose := Dose{
+			Position:  lastPosition(doses) + 1,
 			Timestamp: t,
 			Timezone:  timezone,
 			Date:      *aDate,
@@ -300,6 +303,20 @@ func pFmt(s string) string {
 	}
 
 	return strings.ReplaceAll(s, "%", "%%")
+}
+
+func lastPosition(doses []Dose) int {
+	n := -1
+	for n1, _ := range doses {
+		if n1 > n {
+			n = n1
+		}
+	}
+	if n == -1 {
+		return 0
+	}
+
+	return n
 }
 
 func jsonMarshal(content any) (string, error) {
