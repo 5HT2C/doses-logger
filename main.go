@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -16,6 +17,8 @@ import (
 var (
 	caser  = cases.Title(language.English)
 	client = http.DefaultClient
+
+	prefsUrl = "http://localhost:6010/media/doses-prefs.json"
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
@@ -36,14 +39,42 @@ var (
 	aNote     = flag.String("note", "", "Add note")
 )
 
+type MainPreferences struct {
+	PendConversion []string                   `json:"pend_conversion,omitempty"`
+	Preferences    map[string]UserPreferences `json:"preferences,omitempty"`
+}
+
+type UserPreferences struct {
+	DateFmt string `json:"date_fmt,omitempty"`
+	TimeFmt string `json:"time_fmt,omitempty"`
+}
+
 type Dose struct { // timezone,date,time,dosage,drug,roa,note
-	Timezone string `json:"timezone,omitempty"`
-	Date     string `json:"date,omitempty"`
-	Time     string `json:"time,omitempty"`
-	Dosage   string `json:"dosage,omitempty"`
-	Drug     string `json:"drug,omitempty"`
-	RoA      string `json:"roa,omitempty"`
-	Note     string `json:"note,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
+	Timezone  string    `json:"timezone,omitempty"`
+	Date      string    `json:"date,omitempty"`
+	Time      string    `json:"time,omitempty"`
+	Dosage    string    `json:"dosage,omitempty"`
+	Drug      string    `json:"drug,omitempty"`
+	RoA       string    `json:"roa,omitempty"`
+	Note      string    `json:"note,omitempty"`
+}
+
+// 	tLayouts := []string{"3:04pm", "15:04", "3:04"}
+//	dLayouts := []string{"2006/01/02", "2006-01-02", ""}
+
+func (d Dose) ParsedTime() (time.Time, error) {
+	zero := time.Unix(0, 0)
+	loc, err := time.LoadLocation(d.Timezone)
+	if err != nil {
+		return zero, err
+	}
+
+	if pt, err := time.ParseInLocation("2006/01/0215:04", d.Date+d.Time, loc); err == nil {
+		return pt, nil
+	} else {
+		return zero, err
+	}
 }
 
 func (d Dose) String() string {
@@ -62,24 +93,52 @@ func (d Dose) String() string {
 
 func main() {
 	flag.Parse()
-	response, err := http.Get(*dosesUrl)
-	if err != nil {
-		fmt.Printf("failed to read json: %v", err)
-		return
-	}
 
-	defer response.Body.Close()
-	b, err := io.ReadAll(response.Body)
-	if err != nil {
-		fmt.Printf("failed to read body: %v", err)
-		return
-	}
-
+	var err error
 	var doses []Dose
-	err = json.Unmarshal(b, &doses)
+	var prefs MainPreferences
+
+	err = getJsonFromUrl(&doses, *dosesUrl)
 	if err != nil {
-		fmt.Printf("failed to unmarshal doses: \n%s\n%v", b, err)
-		return
+		return // already handled
+	}
+
+	err = getJsonFromUrl(&prefs, prefsUrl)
+	if err != nil {
+		return // already handled
+	}
+
+	for n1, p := range prefs.PendConversion {
+		pUrl := "http://localhost:6010/media/" + p
+
+		err = getJsonFromUrl(&doses, pUrl)
+		if err != nil {
+			return // already handled
+		}
+
+		for n2, dose := range doses {
+			t, err := dose.ParsedTime()
+			if err == nil {
+				doses[n2].Timestamp = t
+			} else {
+				fmt.Printf("failed to fix dose: %v\n%s\n", err, dose.String())
+			}
+		}
+
+		// Sort by date and time
+		sort.Slice(doses, func(i, j int) bool {
+			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
+		})
+
+		if saveFile(doses, pUrl) {
+			fmt.Printf("fixed %v\n", p)
+		}
+
+		if n1 == len(prefs.PendConversion)-1 {
+			prefs.PendConversion = []string{}
+			saveFile(prefs, prefsUrl)
+			return
+		}
 	}
 
 	mode := "get"
@@ -100,7 +159,7 @@ func main() {
 	case "rm":
 		doses = SliceRemoveIndex(doses, len(doses)-1)
 
-		if !saveFile(doses) {
+		if !saveFile(doses, *dosesUrl) {
 			return
 		}
 
@@ -153,7 +212,7 @@ func main() {
 
 		doses = append(doses, dose)
 
-		if !saveFile(doses) {
+		if !saveFile(doses, *dosesUrl) {
 			return
 		}
 
@@ -161,6 +220,29 @@ func main() {
 	default:
 		fmt.Printf("Not a valid `mode`!")
 	}
+}
+
+func getJsonFromUrl(v any, path string) error {
+	response, err := http.Get(path)
+	if err != nil {
+		fmt.Printf("failed to read json: %v", err)
+		return err
+	}
+
+	defer response.Body.Close()
+	b, err := io.ReadAll(response.Body)
+	if err != nil {
+		fmt.Printf("failed to read body: %v", err)
+		return err
+	}
+
+	err = json.Unmarshal(b, v)
+	if err != nil {
+		fmt.Printf("failed to unmarshal doses: \n%s\n%v", b, err)
+		return err
+	}
+
+	return nil
 }
 
 func caseFmt(s string) string {
@@ -187,24 +269,24 @@ func pFmt(s string) string {
 	return strings.ReplaceAll(s, "%", "%%")
 }
 
-func jsonDoses(doses []Dose) (string, error) {
-	b, err := json.MarshalIndent(doses, "", "    ")
+func jsonMarshal(content any) (string, error) {
+	b, err := json.MarshalIndent(content, "", "    ")
 	if err != nil {
 		fmt.Printf("error marshalling json: %v", b)
 	}
 	return string(b), err
 }
 
-func saveFile(doses []Dose) (r bool) {
+func saveFile(content any, path string) (r bool) {
 	if *urlToken == "" {
 		fmt.Printf("`-token` not set!")
 		return false
 	}
 
-	u := strings.Replace(*dosesUrl, "media", "public/media", 1)
+	u := strings.Replace(path, "media/", "public/media/", 1)
 
-	j, err := jsonDoses(doses)
-	if err != nil { // handled by jsonDoses
+	j, err := jsonMarshal(content)
+	if err != nil { // handled by jsonMarshal
 		return false
 	}
 
@@ -243,7 +325,7 @@ func getDoses(doses []Dose) string {
 			*n = len(doses)
 		}
 
-		j, err := jsonDoses(doses[len(doses)-*n:])
+		j, err := jsonMarshal(doses[len(doses)-*n:])
 		if err != nil {
 			return ""
 		}
