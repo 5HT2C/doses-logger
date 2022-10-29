@@ -19,6 +19,9 @@ var (
 	client = http.DefaultClient
 
 	prefsUrl = "http://localhost:6010/media/doses-prefs.json"
+	dLayouts = []string{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006"}
+	tLayouts = []string{"3:04pm", "15:04", "3:04"}
+	timeZero = time.Unix(0, 0)
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
@@ -50,6 +53,7 @@ type UserPreferences struct {
 }
 
 type Dose struct { // timezone,date,time,dosage,drug,roa,note
+	Position  int64     `json:"position,omitempty"` // order added
 	Timestamp time.Time `json:"timestamp,omitempty"`
 	Timezone  string    `json:"timezone,omitempty"`
 	Date      string    `json:"date,omitempty"`
@@ -60,20 +64,16 @@ type Dose struct { // timezone,date,time,dosage,drug,roa,note
 	Note      string    `json:"note,omitempty"`
 }
 
-// 	tLayouts := []string{"3:04pm", "15:04", "3:04"}
-//	dLayouts := []string{"2006/01/02", "2006-01-02", ""}
-
 func (d Dose) ParsedTime() (time.Time, error) {
-	zero := time.Unix(0, 0)
 	loc, err := time.LoadLocation(d.Timezone)
 	if err != nil {
-		return zero, err
+		return timeZero, err
 	}
 
 	if pt, err := time.ParseInLocation("2006/01/0215:04", d.Date+d.Time, loc); err == nil {
 		return pt, nil
 	} else {
-		return zero, err
+		return timeZero, err
 	}
 }
 
@@ -88,7 +88,7 @@ func (d Dose) String() string {
 		dosage = " " + d.Dosage
 	}
 
-	return pFmt(fmt.Sprintf("%s %s%s %s, %s%s", d.Date, d.Time, dosage, d.Drug, d.RoA, note))
+	return pFmt(fmt.Sprintf("%s%s %s, %s%s", d.Timestamp.Format("2006/01/02 15:04"), dosage, d.Drug, d.RoA, note))
 }
 
 func main() {
@@ -184,14 +184,41 @@ func main() {
 		loc, err := time.LoadLocation(timezone)
 		if err != nil {
 			fmt.Printf("failed to load location: %v", err)
+			return
 		}
+
+		t := time.Now().In(loc)
 
 		if *aDate == "" {
 			*aDate = time.Now().In(loc).Format("2006/01/02")
 		}
 
+		for n1, l := range dLayouts {
+			if tp, err := time.ParseInLocation(l+"15:04", *aDate+"00:00", loc); err == nil {
+				t = tp
+				break
+			}
+
+			if n1 == len(dLayouts)-1 {
+				fmt.Printf("failed to parse \"%s\" with any of the layouts \"[%s]\"\n", *aDate, strings.Join(dLayouts, ", "))
+				return
+			}
+		}
+
 		if *aTime == "" {
 			*aTime = time.Now().In(loc).Format("15:04")
+		}
+
+		for n1, l := range tLayouts {
+			if tp, err := time.ParseInLocation("2006/01/02"+l, t.Format("2006/01/02")+*aTime, loc); err == nil {
+				t = tp
+				break
+			}
+
+			if n1 == len(tLayouts)-1 {
+				fmt.Printf("failed to parse \"%s\" with any of the layouts \"[%s]\"\n", *aTime, strings.Join(tLayouts, ", "))
+				return
+			}
 		}
 
 		if *aRoa == "" {
@@ -201,16 +228,22 @@ func main() {
 		}
 
 		dose := Dose{
-			Timezone: timezone,
-			Date:     *aDate,
-			Time:     *aTime,
-			Dosage:   *aDosage,
-			Drug:     *aDrug,
-			RoA:      *aRoa,
-			Note:     *aNote,
+			Timestamp: t,
+			Timezone:  timezone,
+			Date:      *aDate,
+			Time:      *aTime,
+			Dosage:    *aDosage,
+			Drug:      *aDrug,
+			RoA:       *aRoa,
+			Note:      *aNote,
 		}
 
 		doses = append(doses, dose)
+
+		// Sort by date and time
+		sort.Slice(doses, func(i, j int) bool {
+			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
+		})
 
 		if !saveFile(doses, *dosesUrl) {
 			return
