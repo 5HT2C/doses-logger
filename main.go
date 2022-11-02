@@ -43,8 +43,7 @@ var (
 )
 
 type MainPreferences struct {
-	PendConversion []string                   `json:"pend_conversion,omitempty"`
-	Preferences    map[string]UserPreferences `json:"preferences,omitempty"`
+	Preferences map[string]UserPreferences `json:"preferences,omitempty"`
 }
 
 type UserPreferences struct {
@@ -106,41 +105,6 @@ func main() {
 	err = getJsonFromUrl(&prefs, prefsUrl)
 	if err != nil {
 		return // already handled
-	}
-
-	for n1, p := range prefs.PendConversion {
-		pUrl := "http://localhost:6010/media/" + p
-
-		err = getJsonFromUrl(&doses, pUrl)
-		if err != nil {
-			return // already handled
-		}
-
-		for n2, dose := range doses {
-			doses[n2].Position = n2
-
-			t, err := dose.ParsedTime()
-			if err == nil {
-				doses[n2].Timestamp = t
-			} else {
-				fmt.Printf("failed to fix dose: %v\n%s\n", err, dose.String())
-			}
-		}
-
-		// Sort by date and time
-		sort.Slice(doses, func(i, j int) bool {
-			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
-		})
-
-		if saveFile(doses, pUrl) {
-			fmt.Printf("fixed %v\n", p)
-		}
-
-		if n1 == len(prefs.PendConversion)-1 {
-			prefs.PendConversion = []string{}
-			saveFile(prefs, prefsUrl)
-			return
-		}
 	}
 
 	mode := "get"
