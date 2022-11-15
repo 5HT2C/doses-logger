@@ -25,7 +25,6 @@ var (
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
-	perFmt   = flag.Bool("perFmt", false, "Replace single percentage signs with two")
 
 	add = flag.Bool("add", false, "Set to add a dose")
 	rm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
@@ -87,7 +86,7 @@ func (d Dose) String() string {
 		dosage = " " + d.Dosage
 	}
 
-	return pFmt(fmt.Sprintf("%s%s %s, %s%s", d.Timestamp.Format("2006/01/02 15:04"), dosage, d.Drug, d.RoA, note))
+	return fmt.Sprintf("%s%s %s, %s%s", d.Timestamp.Format("2006/01/02 15:04"), dosage, d.Drug, d.RoA, note)
 }
 
 func main() {
@@ -272,14 +271,6 @@ func caseFmt(s string) string {
 	}
 
 	return s
-}
-
-func pFmt(s string) string {
-	if !*perFmt || s == "" {
-		return s
-	}
-
-	return strings.ReplaceAll(s, "%", "%%")
 }
 
 func lastPosition(doses []Dose) int {
