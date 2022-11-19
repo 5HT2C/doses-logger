@@ -18,7 +18,7 @@ var (
 	caser  = cases.Title(language.English)
 	client = http.DefaultClient
 
-	prefsUrl = "http://localhost:6010/media/doses-prefs.json"
+	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
 	dLayouts = []string{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006"}
 	tLayouts = []string{"3:04pm", "15:04", "3:04"}
 	timeZero = time.Unix(0, 0)
@@ -41,9 +41,9 @@ var (
 	aNote     = flag.String("note", "", "Add note")
 )
 
-type MainPreferences struct {
-	Preferences map[string]UserPreferences `json:"preferences,omitempty"`
-}
+//type MainPreferences struct {
+//	Preferences map[string]UserPreferences `json:"preferences,omitempty"`
+//}
 
 type UserPreferences struct {
 	DateFmt string `json:"date_fmt,omitempty"`
@@ -94,17 +94,17 @@ func main() {
 
 	var err error
 	var doses []Dose
-	var prefs MainPreferences
+	//var prefs MainPreferences
 
 	err = getJsonFromUrl(&doses, *dosesUrl)
 	if err != nil {
 		return // already handled
 	}
 
-	err = getJsonFromUrl(&prefs, prefsUrl)
-	if err != nil {
-		return // already handled
-	}
+	//err = getJsonFromUrl(&prefs, prefsUrl)
+	//if err != nil {
+	//	return // already handled
+	//}
 
 	mode := "get"
 
