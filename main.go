@@ -262,11 +262,27 @@ func caseFmt(s string) string {
 		return s
 	}
 
+	// Removes greek characters, which means strings with lowercase greek and uppercase latin will be treated as all uppercase.
+	// This is useful for something like α-PHP, where otherwise caser.String(s) would return A-Php, which is not what we want.
+	// Initially I implemented this as a function that replaced lowercase greek with upper, but it's more efficient to simply remove the greek.
+	removeGreek := func(s string) string {
+		greek := map[rune]bool{'α': true}
+		sr := []rune(s)
+
+		for i, c := range sr {
+			if ok := greek[c]; ok {
+				sr = append(sr[0:i], sr[i+1:]...)
+			}
+		}
+
+		return string(sr)
+	}
+
 	// If it Starts with a lowercase letter, uppercase it.
 	// TODO: This will not work for something like 3-HO-PCP. Need better solution.
 	// Simply checking for a number isn't enough, as 4-PrO-DMT wouldn't work.
 	// A database of drug names or using the user's last casing when unsure would probably be the way to go.
-	if s[:1] != strings.ToUpper(s[:1]) {
+	if removeGreek(s[:1]) != removeGreek(strings.ToUpper(s[:1])) {
 		return caser.String(s)
 	}
 
