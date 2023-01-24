@@ -29,6 +29,8 @@ var (
 	add = flag.Bool("add", false, "Set to add a dose")
 	rm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
 	j   = flag.Bool("j", false, "Set for json output")
+	u   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
+	t   = flag.Bool("t", false, "Show dottime format in non-json mode")
 	g   = flag.String("g", "", "filter for text")
 	n   = flag.Int("n", 5, "Show last n doses, -1 = all")
 
@@ -86,7 +88,23 @@ func (d Dose) String() string {
 		dosage = " " + d.Dosage
 	}
 
-	return fmt.Sprintf("%s%s %s, %s%s", d.Timestamp.Format("2006/01/02 15:04"), dosage, d.Drug, d.RoA, note)
+	unix := ""
+	if *u {
+		unix = fmt.Sprintf("%v ", d.Timestamp.Unix())
+	}
+
+	// print dottime format
+	if *t {
+		zone := d.Timestamp.Format("Z07")
+		if zone == "Z" {
+			zone = "+00"
+		}
+
+		return fmt.Sprintf("%s%s%s %s, %s%s", unix, d.Timestamp.UTC().Format("2006-01-02 15·04")+zone, dosage, d.Drug, d.RoA, note)
+	}
+
+	// print regular format
+	return fmt.Sprintf("%s%s%s %s, %s%s", unix, d.Timestamp.Format("2006/01/02 15:04"), dosage, d.Drug, d.RoA, note)
 }
 
 func main() {
