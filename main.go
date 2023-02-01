@@ -73,7 +73,7 @@ type DisplayOptions struct {
 	Show     int
 }
 
-func (d *DisplayOptions) Parse() *DisplayOptions {
+func (d *DisplayOptions) Parse() {
 	var mode Mode = ModeGet
 	if *optAdd {
 		mode = ModeAdd
@@ -86,7 +86,7 @@ func (d *DisplayOptions) Parse() *DisplayOptions {
 		showLast = 5
 	}
 
-	return &DisplayOptions{Mode: mode, Json: *optJ, Unix: *optU, DotTime: *optT, Reversed: *optR, Filter: *optG, Show: showLast}
+	options = DisplayOptions{Mode: mode, Json: *optJ, Unix: *optU, DotTime: *optT, Reversed: *optR, Filter: *optG, Show: showLast}
 }
 
 func (d *DisplayOptions) Stash() {
