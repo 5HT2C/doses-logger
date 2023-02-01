@@ -173,7 +173,7 @@ func main() {
 	switch options.Mode {
 	case ModeGet:
 		if options.Filter == "" {
-			fmt.Printf("%s\n", getDoses(doses))
+			fmt.Printf("%s", getDoses(doses))
 		} else {
 			fmt.Printf("not implemented yet!\n")
 		}
@@ -197,7 +197,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s\n", getDoses(doses))
+		fmt.Printf("%s", getDoses(doses))
 	case ModeAdd:
 		if *aDrug == "" {
 			fmt.Printf("`-drug` is not set!\n")
@@ -284,7 +284,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s\n", getDoses(doses))
+		fmt.Printf("%s", getDoses(doses))
 	default:
 		fmt.Printf("Not a valid `mode`!\n")
 	}
