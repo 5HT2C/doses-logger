@@ -173,9 +173,9 @@ func main() {
 	switch options.Mode {
 	case ModeGet:
 		if options.Filter == "" {
-			fmt.Printf("%s", getDoses(doses))
+			fmt.Printf("%s\n", getDoses(doses))
 		} else {
-			fmt.Printf("not implemented yet!")
+			fmt.Printf("not implemented yet!\n")
 		}
 	case ModeRm:
 		pos, posIndex := -1, -1
@@ -197,10 +197,10 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", getDoses(doses))
+		fmt.Printf("%s\n", getDoses(doses))
 	case ModeAdd:
 		if *aDrug == "" {
-			fmt.Printf("`-drug` is not set!")
+			fmt.Printf("`-drug` is not set!\n")
 			return
 		} else {
 			*aDrug = caseFmt(*aDrug)
@@ -217,7 +217,7 @@ func main() {
 
 		loc, err := time.LoadLocation(timezone)
 		if err != nil {
-			fmt.Printf("failed to load location: %v", err)
+			fmt.Printf("failed to load location: %v\n", err)
 			return
 		}
 
@@ -284,29 +284,29 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", getDoses(doses))
+		fmt.Printf("%s\n", getDoses(doses))
 	default:
-		fmt.Printf("Not a valid `mode`!")
+		fmt.Printf("Not a valid `mode`!\n")
 	}
 }
 
 func getJsonFromUrl(v any, path string) error {
 	response, err := http.Get(path)
 	if err != nil {
-		fmt.Printf("failed to read json: %v", err)
+		fmt.Printf("failed to read json: %v\n", err)
 		return err
 	}
 
 	defer response.Body.Close()
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
-		fmt.Printf("failed to read body: %v", err)
+		fmt.Printf("failed to read body: %v\n", err)
 		return err
 	}
 
 	err = json.Unmarshal(b, v)
 	if err != nil {
-		fmt.Printf("failed to unmarshal doses: \n%s\n%v", b, err)
+		fmt.Printf("failed to unmarshal doses: \n%s\n%v\n", b, err)
 		return err
 	}
 
@@ -362,7 +362,7 @@ func lastPosition(doses []Dose) int {
 func jsonMarshal(content any) (string, error) {
 	b, err := json.MarshalIndent(content, "", "    ")
 	if err != nil {
-		fmt.Printf("error marshalling json: %v", b)
+		fmt.Printf("error marshalling json: %v\n", b)
 	}
 	return string(b), err
 }
@@ -382,10 +382,10 @@ func saveFileWrapper(content any, path string) (r bool) {
 			options.DotTime = true
 			options.Reversed = true
 
-			r2 = saveFile(fmt.Sprintf("%s", getDoses(t)), txtPath)
+			r2 = saveFile(getDoses(t), txtPath)
 			options.Pop()
 		default:
-			fmt.Printf("content.(type) is not a []Dose and we're saving /doses.json! If you're reading this, blame frogg.ie")
+			fmt.Printf("content.(type) is not a []Dose and we're saving /doses.json! If you're reading this, blame frogg.ie\n")
 		}
 
 	} else { // don't try to save non-default file with a .txt
@@ -397,7 +397,7 @@ func saveFileWrapper(content any, path string) (r bool) {
 
 func saveFile(content any, path string) (r bool) {
 	if *urlToken == "" {
-		fmt.Printf("`-token` not set!")
+		fmt.Printf("`-token` not set!\n")
 		return false
 	}
 
@@ -408,9 +408,9 @@ func saveFile(content any, path string) (r bool) {
 		return false
 	}
 
-	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {j}}.Encode()))
+	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {j + "\n"}}.Encode()))
 	if err != nil {
-		fmt.Printf("failed to make new request: %v", err)
+		fmt.Printf("failed to make new request: %v\n", err)
 		return false
 	}
 
@@ -418,7 +418,7 @@ func saveFile(content any, path string) (r bool) {
 	req.Header.Set("Auth", *urlToken)
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("error posting body: %s", j)
+		fmt.Printf("error posting body: %s\n", j)
 		return false
 	}
 
@@ -426,11 +426,11 @@ func saveFile(content any, path string) (r bool) {
 		defer response.Body.Close()
 		b, err := io.ReadAll(response.Body)
 		if err != nil {
-			fmt.Printf("failed to read body (code %v): %v", response.StatusCode, err)
+			fmt.Printf("failed to read body (code %v): %v\n", response.StatusCode, err)
 			return false
 		}
 
-		fmt.Printf("status code was %v:\n%s", response.StatusCode, b)
+		fmt.Printf("status code was %v:\n%s\n", response.StatusCode, b)
 		return false
 	}
 
