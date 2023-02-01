@@ -374,7 +374,7 @@ func saveFileWrapper(content any, path string) (r bool) {
 	txtPath := strings.TrimSuffix(path, "/doses.json") + "/doses.txt"
 
 	// faster way of checking if path changed correctly. if it didn't have the right suffix, txtPath will be longer
-	if len(txtPath) < len(path) {
+	if r1 && len(txtPath) < len(path) {
 
 		switch t := content.(type) {
 		case []Dose:
