@@ -19,6 +19,8 @@ var (
 	client = http.DefaultClient
 
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
+	options  = DisplayOptions{}
+	options2 = DisplayOptions{}
 	dLayouts = []string{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006"}
 	tLayouts = []string{"3:04pm", "15:04", "3:04"}
 	timeZero = time.Unix(0, 0)
@@ -26,13 +28,14 @@ var (
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http")
 
-	add = flag.Bool("add", false, "Set to add a dose")
-	rm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
-	j   = flag.Bool("j", false, "Set for json output")
-	u   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
-	t   = flag.Bool("t", false, "Show dottime format in non-json mode")
-	g   = flag.String("g", "", "filter for text")
-	n   = flag.Int("n", 5, "Show last n doses, -1 = all")
+	optAdd = flag.Bool("add", false, "Set to add a dose")
+	optRm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
+	optJ   = flag.Bool("j", false, "Set for json output")
+	optU   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
+	optT   = flag.Bool("t", false, "Show dottime format in non-json mode")
+	optR   = flag.Bool("r", false, "Show in reverse order")
+	optG   = flag.String("g", "", "filter for text")
+	optN   = flag.Int("n", 0, "Show last n doses, -1 = all")
 
 	aTimezone = flag.String("timezone", "", "Set timezone")
 	aDate     = flag.String("date", "", "Set date (defaults to now)")
@@ -50,6 +53,48 @@ var (
 type UserPreferences struct {
 	DateFmt string `json:"date_fmt,omitempty"`
 	TimeFmt string `json:"time_fmt,omitempty"`
+}
+
+type Mode int64
+
+const (
+	ModeGet = iota
+	ModeAdd
+	ModeRm
+)
+
+type DisplayOptions struct {
+	Mode
+	Json     bool
+	Unix     bool
+	DotTime  bool
+	Reversed bool
+	Filter   string
+	Show     int
+}
+
+func (d *DisplayOptions) Parse() *DisplayOptions {
+	var mode Mode = ModeGet
+	if *optAdd {
+		mode = ModeAdd
+	} else if *optRm {
+		mode = ModeRm
+	}
+
+	showLast := *optN
+	if showLast == 0 && mode != ModeGet {
+		showLast = 5
+	}
+
+	return &DisplayOptions{Mode: mode, Json: *optJ, Unix: *optU, DotTime: *optT, Reversed: *optR, Filter: *optG, Show: showLast}
+}
+
+func (d *DisplayOptions) Stash() {
+	options2 = options
+}
+
+func (d *DisplayOptions) Pop() {
+	options = options2
 }
 
 type Dose struct { // timezone,date,time,dosage,drug,roa,note
@@ -89,12 +134,12 @@ func (d Dose) String() string {
 	}
 
 	unix := ""
-	if *u {
+	if options.Unix {
 		unix = fmt.Sprintf("%v ", d.Timestamp.Unix())
 	}
 
 	// print dottime format
-	if *t {
+	if options.DotTime {
 		zone := d.Timestamp.Format("Z07")
 		if zone == "Z" {
 			zone = "+00"
@@ -109,6 +154,7 @@ func (d Dose) String() string {
 
 func main() {
 	flag.Parse()
+	options.Parse()
 
 	var err error
 	var doses []Dose
@@ -124,22 +170,14 @@ func main() {
 	//	return // already handled
 	//}
 
-	mode := "get"
-
-	if *add {
-		mode = "add"
-	} else if *rm {
-		mode = "rm"
-	}
-
-	switch mode {
-	case "get":
-		if *g == "" {
+	switch options.Mode {
+	case ModeGet:
+		if options.Filter == "" {
 			fmt.Printf("%s", getDoses(doses))
 		} else {
 			fmt.Printf("not implemented yet!")
 		}
-	case "rm":
+	case ModeRm:
 		pos, posIndex := -1, -1
 
 		for n1, dose := range doses {
@@ -155,12 +193,12 @@ func main() {
 			doses = SliceRemoveIndex(doses, posIndex)
 		}
 
-		if !saveFile(doses, *dosesUrl) {
+		if !saveFileWrapper(doses, *dosesUrl) {
 			return
 		}
 
 		fmt.Printf("%s", getDoses(doses))
-	case "add":
+	case ModeAdd:
 		if *aDrug == "" {
 			fmt.Printf("`-drug` is not set!")
 			return
@@ -242,7 +280,7 @@ func main() {
 			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
 		})
 
-		if !saveFile(doses, *dosesUrl) {
+		if !saveFileWrapper(doses, *dosesUrl) {
 			return
 		}
 
@@ -309,7 +347,7 @@ func caseFmt(s string) string {
 
 func lastPosition(doses []Dose) int {
 	n := -1
-	for n1, _ := range doses {
+	for n1 := range doses {
 		if n1 > n {
 			n = n1
 		}
@@ -327,6 +365,34 @@ func jsonMarshal(content any) (string, error) {
 		fmt.Printf("error marshalling json: %v", b)
 	}
 	return string(b), err
+}
+
+func saveFileWrapper(content any, path string) (r bool) {
+	var r1, r2 bool
+	r1 = saveFile(content, path)
+
+	txtPath := strings.TrimSuffix(path, "/doses.json") + "/doses.txt"
+
+	// faster way of checking if path changed correctly. if it didn't have the right suffix, txtPath will be longer
+	if len(txtPath) < len(path) {
+
+		switch t := content.(type) {
+		case []Dose:
+			options.Stash()
+			options.DotTime = true
+			options.Reversed = true
+
+			r2 = saveFile(fmt.Sprintf("%s", getDoses(t)), txtPath)
+			options.Pop()
+		default:
+			fmt.Printf("content.(type) is not a []Dose and we're saving /doses.json! If you're reading this, blame frogg.ie")
+		}
+
+	} else { // don't try to save non-default file with a .txt
+		r2 = true
+	}
+
+	return r1 && r2
 }
 
 func saveFile(content any, path string) (r bool) {
@@ -372,12 +438,16 @@ func saveFile(content any, path string) (r bool) {
 }
 
 func getDoses(doses []Dose) string {
-	if *j {
-		if *n > len(doses) || *n <= 0 {
-			*n = len(doses)
+	if options.Reversed {
+		SliceReverse(doses)
+	}
+
+	if options.Json {
+		if options.Show > len(doses) || options.Show <= 0 {
+			options.Show = len(doses)
 		}
 
-		j, err := jsonMarshal(doses[len(doses)-*n:])
+		j, err := jsonMarshal(doses[len(doses)-options.Show:])
 		if err != nil {
 			return ""
 		}
@@ -388,7 +458,7 @@ func getDoses(doses []Dose) string {
 		for _, dose := range doses {
 			dosesStr += dose.String() + "\n"
 		}
-		return Tail(dosesStr, *n)
+		return Tail(dosesStr, options.Show)
 	}
 }
 
