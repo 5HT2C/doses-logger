@@ -82,7 +82,7 @@ func (d *DisplayOptions) Parse() {
 	}
 
 	showLast := *optN
-	if showLast == 0 && mode != ModeGet {
+	if showLast == 0 {
 		showLast = 5
 	}
 
@@ -380,7 +380,7 @@ func saveFileWrapper(content any, path string) (r bool) {
 		case []Dose:
 			options.Stash()
 			options.DotTime = true
-			options.Reversed = true
+			//options.Reversed = true
 
 			r2 = saveFile(getDoses(t), txtPath)
 			options.Pop()
