@@ -98,7 +98,7 @@ func (d *DisplayOptions) Pop() {
 }
 
 type Dose struct { // timezone,date,time,dosage,drug,roa,note
-	Position  int       `json:"position,omitempty"` // order added
+	Position  int       `json:"position"` // order added
 	Timestamp time.Time `json:"timestamp,omitempty"`
 	Timezone  string    `json:"timezone,omitempty"`
 	Date      string    `json:"date,omitempty"`
