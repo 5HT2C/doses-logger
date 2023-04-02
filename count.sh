@@ -7,7 +7,7 @@
 # In the future I will simply use the actual app I've been building for this, Sojourns, but this script exists for parsing and data validity reasons.
 
 if [[ -z "$1" ]]; then
-    echo "Usage: ./dose-count.sh [year]"
+    echo "Usage: ./count.sh [year]"
     exit 1
 fi
 
