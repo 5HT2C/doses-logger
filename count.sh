@@ -6,9 +6,17 @@
 # This is used to automatically fill past data for a spreadsheet that should have been retired by now™.
 # In the future I will simply use the actual app I've been building for this, Sojourns, but this script exists for parsing and data validity reasons.
 
+# Default random initalizer.
+# This just makes for cleaner code in create-dates-year.
+EXCLUDE="$(date +%s%N | base64 | sed "s|[/+=]||g")"
+
 if [[ -z "$1" ]]; then
     echo "Usage: ./count.sh [year]"
     exit 1
+fi
+
+if [[ ! -z "$2" ]]; then
+    EXCLUDE="$2"
 fi
 
 d_num() {
@@ -20,7 +28,7 @@ y_num() {
 }
 
 create-dates-year() {
-    ./doses-logger -n -1 -j | jq -r '.[] | .date' | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
+    ./doses-logger -n -1 -j | jq -r '.[] | .date + "," + .drug' | grep -v "$EXCLUDE" | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
 }
 
 add-zero-days() {
