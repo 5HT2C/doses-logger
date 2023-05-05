@@ -15,8 +15,8 @@ if [[ -z "$1" ]]; then
     exit 1
 fi
 
-if [[ ! -z "$2" ]]; then
-    EXCLUDE="$2"
+if [[ -f "exclude-regex.txt" ]]; then
+    EXCLUDE="$(< exclude-regex.txt)"
 fi
 
 d_num() {
