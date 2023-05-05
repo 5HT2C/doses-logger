@@ -28,7 +28,7 @@ y_num() {
 }
 
 create-dates-year() {
-    ./doses-logger -n -1 -j | jq -r '.[] | .date + "," + .drug' | grep -v "$EXCLUDE" | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
+    ./doses-logger -n -1 -j | jq -r '.[] | .date + "," + .drug' | grep -v "$EXCLUDE" | cut -d "," -f 1 | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
 }
 
 add-zero-days() {
