@@ -255,6 +255,8 @@ func main() {
 			}
 		}
 
+		dosage := strings.ReplaceAll(*aDosage, "µ", "μ")
+
 		if *aRoa == "" {
 			*aRoa = "Oral" // Default RoA. TODO: Proper handling / ask user for default.
 		} else {
@@ -267,7 +269,7 @@ func main() {
 			Timezone:  timezone,
 			Date:      t.Format("2006/01/02"),
 			Time:      t.Format("15:04"),
-			Dosage:    *aDosage,
+			Dosage:    dosage,
 			Drug:      *aDrug,
 			RoA:       *aRoa,
 			Note:      *aNote,
