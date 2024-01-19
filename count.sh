@@ -24,7 +24,7 @@ d_num() {
 }
 
 y_num() {
-    date -d "2022-01-01 + $1 days" +%Y/%m/%d
+    date -d "$1-01-01 + $2 days" +%Y/%m/%d
 }
 
 create-dates-year() {
@@ -40,7 +40,7 @@ add-zero-days() {
             if [[ "$D_LINE" -eq "$C" ]]; then
                 echo "$l"
             else
-                echo "$(y_num "$((C-1))"),0"
+                echo "$(y_num "$1" "$((C-1))"),0"
             fi
             
             C=$((C+1))
@@ -49,5 +49,5 @@ add-zero-days() {
 }
 
 create-dates-year "$1"
-add-zero-days
+add-zero-days "$1"
 rm dates.txt
