@@ -8,15 +8,17 @@
 
 # Default random initalizer.
 # This just makes for cleaner code in create-dates-year.
-EXCLUDE="$(date +%s%N | base64 | sed "s|[/+=]||g")"
+#EXCLUDE="$(date +%s%N | base64 | sed "s|[/+=]||g")"
+# 2024-01-18 update: jesse what the FUCK is the above code for i have no idea by this point i'm so confused
 
 if [[ -z "$1" ]]; then
     echo "Usage: ./count.sh [year]"
     exit 1
 fi
 
-if [[ -f "exclude-regex.txt" ]]; then
-    EXCLUDE="$(< exclude-regex.txt)"
+if [[ ! -f "count-filter.txt" ]]; then
+    echo "" > count-filter.txt
+    RM_EXCLUDE_FILE=1
 fi
 
 d_num() {
@@ -28,7 +30,7 @@ y_num() {
 }
 
 create-dates-year() {
-    ./doses-logger -n -1 -j | jq -r '.[] | .date + "," + .drug' | grep -E -v "$EXCLUDE" | cut -d "," -f 1 | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
+    ./doses-logger -n -1 -j | jq -r '.[] | .date + "," + .drug' | rg -f therapeutic.txt -v | rg -f count-filter.txt | cut -d "," -f 1 | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
 }
 
 add-zero-days() {
@@ -51,3 +53,4 @@ add-zero-days() {
 create-dates-year "$1"
 add-zero-days "$1"
 rm dates.txt
+[[ "$RM_EXCLUDE_FILE" ]] && rm count-filter.txt
