@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -175,7 +177,11 @@ func main() {
 		if options.Filter == "" {
 			fmt.Printf("%s", getDoses(doses))
 		} else {
-			fmt.Printf("not implemented yet!\n")
+			if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
+				fmt.Printf("Couldn't compile regex: %s\n", err)
+			} else {
+				fmt.Printf("%s", getDosesFiltered(doses, filter))
+			}
 		}
 	case ModeRm:
 		pos, posIndex := -1, -1
@@ -440,16 +446,32 @@ func saveFile(content any, path string) (r bool) {
 }
 
 func getDoses(doses []Dose) string {
+	return getDosesFiltered(doses, nil)
+}
+
+func getDosesFiltered(doses []Dose, filter *regexp.Regexp) string {
 	if options.Reversed {
 		SliceReverse(doses)
 	}
 
 	if options.Json {
-		if options.Show > len(doses) || options.Show <= 0 {
-			options.Show = len(doses)
+		dosesFiltered := make([]Dose, 0)
+
+		if filter == nil {
+			dosesFiltered = append(dosesFiltered, doses...)
+		} else {
+			for _, d := range doses {
+				if filter.MatchString(d.String()) {
+					dosesFiltered = append(dosesFiltered, d)
+				}
+			}
 		}
 
-		j, err := jsonMarshal(doses[len(doses)-options.Show:])
+		if options.Show > len(dosesFiltered) || options.Show <= 0 {
+			options.Show = len(dosesFiltered)
+		}
+
+		j, err := jsonMarshal(dosesFiltered[len(dosesFiltered)-options.Show:])
 		if err != nil {
 			return ""
 		}
@@ -458,7 +480,11 @@ func getDoses(doses []Dose) string {
 	} else {
 		dosesStr := ""
 		for _, dose := range doses {
-			dosesStr += dose.String() + "\n"
+			dStr := dose.String() + "\n"
+
+			if filter == nil || (filter != nil && filter.MatchString(dStr)) { // options.Filter
+				dosesStr += dStr
+			}
 		}
 		return Tail(dosesStr, options.Show)
 	}
