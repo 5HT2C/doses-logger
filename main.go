@@ -229,7 +229,7 @@ func (s DoseStat) Format(n1, n2 int) string {
 			), "0",
 		), ".",
 	) + s.Unit
-	f2 += strings.Repeat(" ", n2-len(f2)+offset)
+	f2 += strings.Repeat(" ", n2-len(f2)+offset) // TODO: This can panic but I don't see clean way of increasing the size dynamically, if this becomes an issue just fix
 
 	return f1 + f2 + s.Drug
 }
