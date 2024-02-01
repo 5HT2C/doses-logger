@@ -374,9 +374,25 @@ func main() {
 
 		fmt.Printf("%s", getDoses(doses))
 	case ModeStatTop:
+		dosesFiltered := make([]Dose, 0)
+
+		if options.Filter == "" {
+			dosesFiltered = append(dosesFiltered, doses...)
+		} else {
+			if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil || filter == nil {
+				fmt.Printf("Couldn't compile regex: %s\n", err)
+			} else {
+				for _, d := range doses {
+					if filter.MatchString(d.String()) {
+						dosesFiltered = append(dosesFiltered, d)
+					}
+				}
+			}
+		}
+
 		stats := make(map[string]DoseStat)
 
-		for _, d := range doses {
+		for _, d := range dosesFiltered {
 			stats[d.Drug] = stats[d.Drug].IncrementTotalDoses()
 			if d.Drug != "Total" { // in case a user has a drug called total for some reason
 				stats["Total"] = stats["Total"].IncrementTotalDoses()
