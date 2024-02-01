@@ -377,6 +377,11 @@ func main() {
 		stats := make(map[string]DoseStat)
 
 		for _, d := range doses {
+			stats[d.Drug] = stats[d.Drug].IncrementTotalDoses()
+			if d.Drug != "Total" { // in case a user has a drug called total for some reason
+				stats["Total"] = stats["Total"].IncrementTotalDoses()
+			}
+
 			units := dosageRegex.FindStringSubmatch(d.Dosage)
 			if len(units) != 4 {
 				continue
@@ -387,16 +392,13 @@ func main() {
 				continue
 			}
 
-			stats[d.Drug] = stats[d.Drug].IncrementTotalDoses()
 			stats[d.Drug] = stats[d.Drug].UpdateUnit(units[3])
 			stats[d.Drug] = stats[d.Drug].IncrementTotalAmount(amount)
 
-			if d.Drug == "Total" { // in case a user has a drug called total for some reason
-				continue
+			if d.Drug != "Total" { // in case a user has a drug called total for some reason
+				stats["Total"] = stats["Total"].UpdateUnit(units[3])
+				stats["Total"] = stats["Total"].IncrementTotalAmount(amount)
 			}
-			stats["Total"] = stats["Total"].IncrementTotalDoses()
-			stats["Total"] = stats["Total"].UpdateUnit(units[3])
-			stats["Total"] = stats["Total"].IncrementTotalAmount(amount)
 		}
 
 		highestLen := 0
@@ -431,6 +433,7 @@ func main() {
 			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
 		})
 
+		fmt.Printf("%v\n", len(doseStats))
 		lines := ""
 		for _, s := range doseStats {
 			lines += fmt.Sprintf("%s\n", s.Format(highestLen, 9))
