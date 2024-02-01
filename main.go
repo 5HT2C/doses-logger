@@ -433,7 +433,6 @@ func main() {
 			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
 		})
 
-		fmt.Printf("%v\n", len(doseStats))
 		lines := ""
 		for _, s := range doseStats {
 			lines += fmt.Sprintf("%s\n", s.Format(highestLen, 9))
