@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,8 +18,9 @@ import (
 )
 
 var (
-	caser  = cases.Title(language.English)
-	client = http.DefaultClient
+	caser       = cases.Title(language.English)
+	client      = http.DefaultClient
+	dosageRegex = regexp.MustCompile("([0-9.]+)([ -_]+)?([μµ]g|mg|g|u|x|)?")
 
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
 	options  = DisplayOptions{}
@@ -32,6 +34,7 @@ var (
 
 	optAdd = flag.Bool("add", false, "Set to add a dose")
 	optRm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
+	optTop = flag.Bool("stat-top", false, "Set to view top statistics")
 	optJ   = flag.Bool("j", false, "Set for json output")
 	optU   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
 	optT   = flag.Bool("t", false, "Show dottime format in non-json mode")
@@ -63,6 +66,7 @@ const (
 	ModeGet = iota
 	ModeAdd
 	ModeRm
+	ModeStatTop
 )
 
 type DisplayOptions struct {
@@ -81,6 +85,8 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeAdd
 	} else if *optRm {
 		mode = ModeRm
+	} else if *optTop {
+		mode = ModeStatTop
 	}
 
 	showLast := *optN
@@ -152,6 +158,80 @@ func (d Dose) String() string {
 
 	// print regular format
 	return fmt.Sprintf("%s%s%s %s, %s%s", unix, d.Timestamp.Format("2006/01/02 15:04"), dosage, d.Drug, d.RoA, note)
+}
+
+type DoseUnitSize int64
+
+const (
+	DoseUnitSizeDefault   DoseUnitSize = 1
+	DoseUnitSizeMilligram DoseUnitSize = 1000
+	DoseUnitSizeGram      DoseUnitSize = 1000 * 1000
+)
+
+type DoseStat struct {
+	Drug        string
+	TotalDoses  int64
+	TotalAmount float64 // in micrograms
+	Unit        string
+	UnitSize    DoseUnitSize
+}
+
+func (s DoseStat) IncrementTotalDoses() DoseStat {
+	s.TotalDoses += 1
+	return s
+}
+
+func (s DoseStat) IncrementTotalAmount(n float64) DoseStat {
+	s.TotalAmount += n * float64(s.UnitSize)
+	return s
+}
+
+func (s DoseStat) InitUnit(u string) DoseStat {
+	if s.Unit != "" {
+		return s
+	}
+
+	s.Unit = u
+	return s
+}
+
+func (s DoseStat) UpdateUnit(u string) DoseStat {
+	s.Unit = u
+
+	switch u {
+	case "g":
+		s.UnitSize = DoseUnitSizeGram
+	case "mg":
+		s.UnitSize = DoseUnitSizeMilligram
+	default:
+		s.UnitSize = DoseUnitSizeDefault
+	}
+
+	return s
+}
+
+func (s DoseStat) Format(n1, n2 int) string {
+	offset := 0
+	if strings.ContainsAny(s.Unit, "μµ") {
+		offset = 1
+	}
+
+	f1 := fmt.Sprintf(
+		"%v",
+		s.TotalDoses,
+	)
+	f1 += strings.Repeat(" ", n1-len(f1))
+	f2 := strings.TrimRight(
+		strings.TrimRight(
+			fmt.Sprintf(
+				"%.2f",
+				s.TotalAmount,
+			), "0",
+		), ".",
+	) + s.Unit
+	f2 += strings.Repeat(" ", n2-len(f2)+offset)
+
+	return f1 + f2 + s.Drug
 }
 
 func main() {
@@ -293,6 +373,68 @@ func main() {
 		}
 
 		fmt.Printf("%s", getDoses(doses))
+	case ModeStatTop:
+		stats := make(map[string]DoseStat)
+
+		for _, d := range doses {
+			stats[d.Drug] = stats[d.Drug].IncrementTotalDoses()
+			stats["Total"] = stats["Total"].IncrementTotalDoses()
+
+			units := dosageRegex.FindStringSubmatch(d.Dosage)
+			if len(units) != 4 {
+				continue
+			}
+
+			amount, err := strconv.ParseFloat(units[1], 64)
+			if err != nil {
+				continue
+			}
+
+			stats[d.Drug] = stats[d.Drug].UpdateUnit(units[3])
+			stats["Total"] = stats["Total"].UpdateUnit(units[3])
+
+			stats[d.Drug] = stats[d.Drug].IncrementTotalAmount(amount)
+			stats["Total"] = stats["Total"].IncrementTotalAmount(amount)
+		}
+
+		highestLen := 0
+		var doseStats []DoseStat
+		for k, v := range stats {
+			// convert from micrograms to larger units if too big
+			switch v.Unit {
+			case "g", "mg", "μg", "µg":
+				if v.TotalAmount >= 1000 {
+					v = v.UpdateUnit("mg")
+					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
+				}
+
+				if v.TotalAmount >= 1000 {
+					v = v.UpdateUnit("g")
+					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
+				}
+			}
+
+			// get the longest len to use for spacing later
+			if k == "Total" {
+				highestLen = len(fmt.Sprintf("%v", v.TotalDoses)) + 1
+			}
+
+			// set name value
+			v.Drug = k
+			// Now we can finally append to be sorted
+			doseStats = append(doseStats, v)
+		}
+
+		sort.Slice(doseStats, func(i, j int) bool {
+			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
+		})
+
+		lines := ""
+		for _, s := range doseStats {
+			lines += fmt.Sprintf("%s\n", s.Format(highestLen, 9))
+		}
+
+		fmt.Printf("%s", lines)
 	default:
 		fmt.Printf("Not a valid `mode`!\n")
 	}
