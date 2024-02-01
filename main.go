@@ -429,7 +429,12 @@ func main() {
 			doseStats = append(doseStats, v)
 		}
 
+		// If total doses is the same, sort by total amount
+		// Then sort by total doses
 		sort.Slice(doseStats, func(i, j int) bool {
+			if doseStats[i].TotalDoses == doseStats[j].TotalDoses {
+				return doseStats[i].TotalAmount*float64(doseStats[i].UnitSize) < doseStats[j].TotalAmount*float64(doseStats[j].UnitSize)
+			}
 			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
 		})
 
