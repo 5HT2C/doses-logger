@@ -377,9 +377,6 @@ func main() {
 		stats := make(map[string]DoseStat)
 
 		for _, d := range doses {
-			stats[d.Drug] = stats[d.Drug].IncrementTotalDoses()
-			stats["Total"] = stats["Total"].IncrementTotalDoses()
-
 			units := dosageRegex.FindStringSubmatch(d.Dosage)
 			if len(units) != 4 {
 				continue
@@ -390,10 +387,15 @@ func main() {
 				continue
 			}
 
+			stats[d.Drug] = stats[d.Drug].IncrementTotalDoses()
 			stats[d.Drug] = stats[d.Drug].UpdateUnit(units[3])
-			stats["Total"] = stats["Total"].UpdateUnit(units[3])
-
 			stats[d.Drug] = stats[d.Drug].IncrementTotalAmount(amount)
+
+			if d.Drug == "Total" { // in case a user has a drug called total for some reason
+				continue
+			}
+			stats["Total"] = stats["Total"].IncrementTotalDoses()
+			stats["Total"] = stats["Total"].UpdateUnit(units[3])
 			stats["Total"] = stats["Total"].IncrementTotalAmount(amount)
 		}
 
