@@ -35,6 +35,7 @@ var (
 	optAdd = flag.Bool("add", false, "Set to add a dose")
 	optRm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
 	optTop = flag.Bool("stat-top", false, "Set to view top statistics")
+	optAvg = flag.Bool("stat-avg", false, "Set to view average dose statistics")
 	optJ   = flag.Bool("j", false, "Set for json output")
 	optU   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
 	optT   = flag.Bool("t", false, "Show dottime format in non-json mode")
@@ -67,6 +68,7 @@ const (
 	ModeAdd
 	ModeRm
 	ModeStatTop
+	ModeStatAvg
 )
 
 type DisplayOptions struct {
@@ -87,6 +89,8 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeRm
 	} else if *optTop {
 		mode = ModeStatTop
+	} else if *optAvg {
+		mode = ModeStatAvg
 	}
 
 	showLast := *optN
@@ -373,7 +377,7 @@ func main() {
 		}
 
 		fmt.Printf("%s", getDoses(doses))
-	case ModeStatTop:
+	case ModeStatTop, ModeStatAvg:
 		dosesFiltered := make([]Dose, 0)
 
 		if options.Filter == "" {
@@ -420,6 +424,11 @@ func main() {
 		highestLen := 0
 		var doseStats []DoseStat
 		for k, v := range stats {
+			// convert for average stats
+			if options.Mode == ModeStatAvg {
+				v.TotalAmount = v.TotalAmount / float64(v.TotalDoses)
+			}
+
 			// convert from micrograms to larger units if too big
 			switch v.Unit {
 			case "g", "mg", "μg", "µg":
