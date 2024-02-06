@@ -463,6 +463,10 @@ func main() {
 			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
 		})
 
+		if options.Mode == ModeStatAvg {
+			doseStats[len(doseStats)-1].Drug = "Average"
+		}
+
 		lines := ""
 		for _, s := range doseStats {
 			lines += fmt.Sprintf("%s\n", s.Format(highestLen, 9))
