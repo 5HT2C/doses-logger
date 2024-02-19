@@ -435,9 +435,15 @@ func main() {
 				v.TotalAmount = v.TotalAmount / float64(v.TotalDoses)
 			}
 
+			// get the longest len to use for spacing later
+			if k == "Total" {
+				v.Unit = k
+				highestLen = len(fmt.Sprintf("%v", v.TotalDoses)) + 1
+			}
+
 			// convert from micrograms to larger units if too big
 			switch v.Unit {
-			case "g", "mg", "μg", "µg":
+			case "g", "mg", "μg", "µg", "Total":
 				if v.TotalAmount >= 1000 {
 					v = v.UpdateUnit("mg")
 					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
@@ -447,11 +453,6 @@ func main() {
 					v = v.UpdateUnit("g")
 					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
 				}
-			}
-
-			// get the longest len to use for spacing later
-			if k == "Total" {
-				highestLen = len(fmt.Sprintf("%v", v.TotalDoses)) + 1
 			}
 
 			// set name value
