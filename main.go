@@ -181,25 +181,6 @@ type DoseStat struct {
 	UnitSize    DoseUnitSize
 }
 
-func (s DoseStat) IncrementTotalDoses() DoseStat {
-	s.TotalDoses += 1
-	return s
-}
-
-func (s DoseStat) IncrementTotalAmount(n float64) DoseStat {
-	s.TotalAmount += n * float64(s.UnitSize)
-	return s
-}
-
-func (s DoseStat) InitUnit(u string) DoseStat {
-	if s.Unit != "" {
-		return s
-	}
-
-	s.Unit = u
-	return s
-}
-
 func (s DoseStat) UpdateUnit(u string) DoseStat {
 	s.Unit = u
 
