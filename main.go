@@ -222,6 +222,7 @@ func (s DoseStat) Format(n1, n2 int) string {
 		), ".",
 	) + s.Unit
 
+	// TODO: Make offset dynamic
 	offset = n2 - len(f2) + offset
 	if offset < 1 {
 		offset = 1
