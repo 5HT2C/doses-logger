@@ -170,6 +170,7 @@ const (
 	DoseUnitSizeDefault   DoseUnitSize = 1
 	DoseUnitSizeMilligram DoseUnitSize = 1000
 	DoseUnitSizeGram      DoseUnitSize = 1000 * 1000
+	DoseUnitSizeEthanol   DoseUnitSize = 0.1 * 0.7893 * 1000 * 1000 // 0.1mL = 1u of EtOH * density of EtOH at g/mL * to get micrograms
 )
 
 type DoseStat struct {
@@ -201,6 +202,11 @@ func (s DoseStat) InitUnit(u string) DoseStat {
 
 func (s DoseStat) UpdateUnit(u string) DoseStat {
 	s.Unit = u
+
+	if u == "u" && s.Drug == "Alcohol" {
+		s.UnitSize = DoseUnitSizeEthanol
+		return s
+	}
 
 	switch u {
 	case "g":
@@ -401,12 +407,20 @@ func main() {
 		}
 
 		stats := make(map[string]DoseStat)
+		statTotal := DoseStat{Drug: "Total"}
+		statTotal = statTotal.UpdateUnit("μg")
 
+		if options.Mode == ModeStatAvg {
+			statTotal.Drug = "Average"
+		}
+
+		//
+		// increment total doses and total amount for each drug
 		for _, d := range dosesFiltered {
-			stats[d.Drug] = stats[d.Drug].IncrementTotalDoses()
-			if d.Drug != "Total" { // in case a user has a drug called total for some reason
-				stats["Total"] = stats["Total"].IncrementTotalDoses()
-			}
+			stat := stats[d.Drug]
+			stat.Drug = d.Drug
+			stat.TotalDoses += 1
+			statTotal.TotalDoses += 1
 
 			units := dosageRegex.FindStringSubmatch(d.Dosage)
 			if len(units) != 4 {
@@ -418,32 +432,37 @@ func main() {
 				continue
 			}
 
-			stats[d.Drug] = stats[d.Drug].UpdateUnit(units[3])
-			stats[d.Drug] = stats[d.Drug].IncrementTotalAmount(amount)
+			stat = stat.UpdateUnit(units[3])
+			amountUg := amount * float64(stat.UnitSize)
 
-			if d.Drug != "Total" { // in case a user has a drug called total for some reason
-				stats["Total"] = stats["Total"].UpdateUnit(units[3])
-				stats["Total"] = stats["Total"].IncrementTotalAmount(amount)
+			if stat.UnitSize == DoseUnitSizeEthanol {
+				stat.TotalAmount += amount
+			} else {
+				stat.TotalAmount += amountUg
 			}
+
+			statTotal.TotalAmount += amountUg
+
+			stats[d.Drug] = stat
 		}
 
-		highestLen := 0
-		var doseStats []DoseStat
-		for k, v := range stats {
+		// get the longest len to use for spacing later
+		highestLen := len(fmt.Sprintf("%v", statTotal.TotalDoses)) + 1
+
+		//
+		// go through each stat and convert smaller units to larger ones when appropriate
+		doseStats := make([]DoseStat, 0)
+		stats["Total"] = statTotal
+
+		for _, v := range stats {
 			// convert for average stats
 			if options.Mode == ModeStatAvg {
 				v.TotalAmount = v.TotalAmount / float64(v.TotalDoses)
 			}
 
-			// get the longest len to use for spacing later
-			if k == "Total" {
-				v.Unit = k
-				highestLen = len(fmt.Sprintf("%v", v.TotalDoses)) + 1
-			}
-
 			// convert from micrograms to larger units if too big
 			switch v.Unit {
-			case "g", "mg", "μg", "µg", "Total":
+			case "g", "mg", "μg", "µg":
 				if v.TotalAmount >= 1000 {
 					v = v.UpdateUnit("mg")
 					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
@@ -455,8 +474,6 @@ func main() {
 				}
 			}
 
-			// set name value
-			v.Drug = k
 			// Now we can finally append to be sorted
 			doseStats = append(doseStats, v)
 		}
@@ -469,10 +486,6 @@ func main() {
 			}
 			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
 		})
-
-		if options.Mode == ModeStatAvg {
-			doseStats[len(doseStats)-1].Drug = "Average"
-		}
 
 		lines := ""
 		for _, s := range doseStats {
