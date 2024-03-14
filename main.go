@@ -40,7 +40,8 @@ var (
 	optU   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
 	optT   = flag.Bool("t", false, "Show dottime format in non-json mode")
 	optR   = flag.Bool("r", false, "Show in reverse order")
-	optG   = flag.String("g", "", "filter for text")
+	optV   = flag.Bool("v", false, "Inverse filter for text")
+	optG   = flag.String("g", "", "Filter for text")
 	optN   = flag.Int("n", 0, "Show last n doses, -1 = all")
 
 	aTimezone = flag.String("timezone", "", "Set timezone")
@@ -73,12 +74,13 @@ const (
 
 type DisplayOptions struct {
 	Mode
-	Json     bool
-	Unix     bool
-	DotTime  bool
-	Reversed bool
-	Filter   string
-	Show     int
+	Json         bool
+	Unix         bool
+	DotTime      bool
+	Reversed     bool
+	FilterInvert bool
+	Filter       string
+	Show         int
 }
 
 func (d *DisplayOptions) Parse() {
@@ -98,7 +100,7 @@ func (d *DisplayOptions) Parse() {
 		showLast = 5
 	}
 
-	options = DisplayOptions{Mode: mode, Json: *optJ, Unix: *optU, DotTime: *optT, Reversed: *optR, Filter: *optG, Show: showLast}
+	options = DisplayOptions{Mode: mode, Json: *optJ, Unix: *optU, DotTime: *optT, Reversed: *optR, FilterInvert: *optV, Filter: *optG, Show: showLast}
 }
 
 func (d *DisplayOptions) Stash() {
@@ -235,6 +237,11 @@ func (s DoseStat) Format(n1, n2 int) string {
 func main() {
 	flag.Parse()
 	options.Parse()
+
+	if options.FilterInvert && options.Filter == "" {
+		fmt.Printf("-v is set but no -g filter is set? Can't invert filter without a filter to invert!\n")
+		return
+	}
 
 	var err error
 	var doses []Dose
@@ -381,7 +388,7 @@ func main() {
 				fmt.Printf("Couldn't compile regex: %s\n", err)
 			} else {
 				for _, d := range doses {
-					if filter.MatchString(d.String()) {
+					if options.FilterInvert != filter.MatchString(d.String()) {
 						dosesFiltered = append(dosesFiltered, d)
 					}
 				}
@@ -643,7 +650,7 @@ func getDosesFiltered(doses []Dose, filter *regexp.Regexp) string {
 			dosesFiltered = append(dosesFiltered, doses...)
 		} else {
 			for _, d := range doses {
-				if filter.MatchString(d.String()) {
+				if options.FilterInvert != filter.MatchString(d.String()) {
 					dosesFiltered = append(dosesFiltered, d)
 				}
 			}
@@ -664,7 +671,7 @@ func getDosesFiltered(doses []Dose, filter *regexp.Regexp) string {
 		for _, dose := range doses {
 			dStr := dose.String() + "\n"
 
-			if filter == nil || (filter != nil && filter.MatchString(dStr)) { // options.Filter
+			if filter == nil || (filter != nil && (options.FilterInvert != filter.MatchString(dStr))) { // options.Filter
 				dosesStr += dStr
 			}
 		}
