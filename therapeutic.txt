@@ -1,0 +1,67 @@
+Therapeutic
+5-HTP
+Acetylcarnitine
+Agmatine
+Albuterol
+Alcohol Defense
+Amitriptyline
+Articaine
+Aspirin
+BPC-157
+Beclometasone
+Benzocaine
+Bilastine
+Bisfluoroadrafinil
+Bisfluoromodafinil
+Bromantane
+CBD
+Caffeine
+Calcium (Carbonate|Phosphate)
+(Cetrimide|Chlorhexidine Digluconate)
+Cetirizine
+Cholecalciferol
+Diclofenac Calcium
+Diclofenac Sodium
+Dihydroergotamine
+Domperidone
+Epinephrine
+Esomeprazole
+Estradiol (Hemihydrate|Valerate|Enanthate|Undecylate)
+Formoterol
+Gabapentin.+Therapeutic
+Hexapeptide-38
+Ibuprofen
+Ketamine.+Therapeutic
+Kratom.+Therapeutic
+L-Ascorbic Acid
+L-Theanine
+Lidocaine
+Lisdexamfetamine.+Therapeutic
+Loratadine
+Lurasidone
+Magnesium (Glycinate|L-Threonate|Hydroxide)
+Methyl-B12
+Metoprolol
+NAC
+Naproxen
+Nicotine
+Omeprazole
+Ondansetron
+Pagoclone
+Paracetamol
+Phenylethylamine
+Picamilon
+Pregabalin.+Therapeutic
+Procaine
+Progesterone
+Propranolol
+Pseudoephedrine
+Psyllium Husk
+Quetiapine
+Rasagiline
+Sildenafil
+Strepsil
+Tadalafil
+Terbinafine HCl
+Testosterone
+Zinc
