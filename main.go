@@ -26,7 +26,7 @@ var (
 	options  = DisplayOptions{}
 	options2 = DisplayOptions{}
 	dLayouts = []string{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006"}
-	tLayouts = []string{"3:04pm", "15:04", "3:04"}
+	tLayouts = []string{"3:04pm", "15:04", "3:04", "1504"}
 	timeZero = time.Unix(0, 0)
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
@@ -335,6 +335,10 @@ func main() {
 		}
 
 		for n1, l := range tLayouts {
+			if len(*aTime) != len(l) { // slight efficiency boost instead of waiting for time.ParseInLocation to fail
+				continue
+			}
+
 			if tp, err := time.ParseInLocation("2006/01/02"+l, t.Format("2006/01/02")+*aTime, loc); err == nil {
 				t = tp
 				break
