@@ -414,6 +414,7 @@ func main() {
 			stat.Drug = d.Drug
 			stat.TotalDoses += 1
 			statTotal.TotalDoses += 1
+			stats[d.Drug] = stat
 
 			units := dosageRegex.FindStringSubmatch(d.Dosage)
 			if len(units) != 4 {
