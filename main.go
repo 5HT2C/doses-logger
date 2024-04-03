@@ -360,7 +360,7 @@ func main() {
 		dosage := strings.ReplaceAll(*aDosage, "µ", "μ")
 
 		// Replace dosage ml with mL
-		if strings.HasSuffix(dosage, "mL") {
+		if strings.HasSuffix(dosage, "ml") {
 			dosage = strings.TrimSuffix(dosage, "ml")
 			dosage += "mL"
 		}
