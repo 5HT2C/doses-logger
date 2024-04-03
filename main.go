@@ -201,7 +201,7 @@ func (s DoseStat) UpdateUnit(u string) DoseStat {
 			s.UnitSize = DoseUnitSizeGHB
 		case s.Drug == "GBL":
 			s.UnitSize = DoseUnitSizeGBL
-		case strings.Contains(s.Drug, "BDO"):
+		case s.Drug == "BDO":
 			s.UnitSize = DoseUnitSizeBDO
 		default:
 			s.UnitSize = DoseUnitSizeMilliliter
