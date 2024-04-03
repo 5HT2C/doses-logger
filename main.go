@@ -173,6 +173,7 @@ const (
 	DoseUnitSizeMilligram DoseUnitSize = 1000
 	DoseUnitSizeGram      DoseUnitSize = 1000 * 1000
 	DoseUnitSizeEthanol   DoseUnitSize = 0.1 * 0.7893 * 1000 * 1000 // 0.1mL = 1u of EtOH * density of EtOH at g/mL * to get micrograms
+	DoseUnitSizeBDO       DoseUnitSize = 0.1017 * 1000 * 1000 * 10  // 0.1mL = 0.1017g of 1,4-BDO * to get micrograms
 )
 
 type DoseStat struct {
@@ -188,6 +189,11 @@ func (s DoseStat) UpdateUnit(u string) DoseStat {
 
 	if u == "u" && s.Drug == "Alcohol" {
 		s.UnitSize = DoseUnitSizeEthanol
+		return s
+	}
+
+	if u == "mL" && strings.Contains(s.Drug, "BDO") {
+		s.UnitSize = DoseUnitSizeBDO
 		return s
 	}
 
@@ -436,9 +442,10 @@ func main() {
 			stat = stat.UpdateUnit(units[3])
 			amountUg := amount * float64(stat.UnitSize)
 
-			if stat.UnitSize == DoseUnitSizeEthanol {
+			switch stat.UnitSize {
+			case DoseUnitSizeEthanol, DoseUnitSizeBDO:
 				stat.TotalAmount += amount
-			} else {
+			default:
 				stat.TotalAmount += amountUg
 			}
 
