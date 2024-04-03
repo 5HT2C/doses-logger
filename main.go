@@ -20,7 +20,7 @@ import (
 var (
 	caser       = cases.Title(language.English)
 	client      = http.DefaultClient
-	dosageRegex = regexp.MustCompile("([0-9.]+)([ -_]+)?([μµ]g|mg|g|u|x|)?")
+	dosageRegex = regexp.MustCompile("([0-9.]+)([ -_]+)?([μµ]g|mg|g|u|x|mL|)?")
 
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
 	options  = DisplayOptions{}
@@ -350,7 +350,14 @@ func main() {
 			}
 		}
 
+		// Replace dosage U+00B5 with U+03BC
 		dosage := strings.ReplaceAll(*aDosage, "µ", "μ")
+
+		// Replace dosage ml with mL
+		if strings.HasSuffix(dosage, "mL") {
+			dosage = strings.TrimSuffix(dosage, "ml")
+			dosage += "mL"
+		}
 
 		if *aRoa == "" {
 			*aRoa = "Oral" // Default RoA. TODO: Proper handling / ask user for default.
