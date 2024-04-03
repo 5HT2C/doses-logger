@@ -172,8 +172,8 @@ const (
 	DoseUnitSizeDefault   DoseUnitSize = 1
 	DoseUnitSizeMilligram DoseUnitSize = 1000
 	DoseUnitSizeGram      DoseUnitSize = 1000 * 1000
-	DoseUnitSizeEthanol   DoseUnitSize = 0.1 * 0.7893 * 1000 * 1000 // 0.1mL = 1u of EtOH * density of EtOH at g/mL * to get micrograms
-	DoseUnitSizeBDO       DoseUnitSize = 0.1017 * 1000 * 1000 * 10  // 0.1mL = 0.1017g of 1,4-BDO * to get micrograms
+	DoseUnitSizeEthanol   DoseUnitSize = 0.1 * 0.7893 * 1000 * 1000 // 0.1mL = 1u of EtOH at g/mL * to get micrograms
+	DoseUnitSizeBDO       DoseUnitSize = 0.1017 * 1000 * 1000 * 10  // 0.1mL = 0.1017g of 1,4-BDO at 25°C * to get micrograms
 )
 
 type DoseStat struct {
