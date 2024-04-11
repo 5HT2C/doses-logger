@@ -173,6 +173,7 @@ const (
 	DoseUnitSizeMilliliter DoseUnitSize = 0
 	DoseUnitSizeMilligram  DoseUnitSize = 1000
 	DoseUnitSizeGram       DoseUnitSize = 1000 * 1000
+	DoseUnitSizeKilogram   DoseUnitSize = 1000 * 1000 * 1000
 	DoseUnitSizeEthanol    DoseUnitSize = 0.1 * 0.7893 * 1000 * 1000 // 0.1mL = 1u of EtOH (g/mL) * to get micrograms
 	DoseUnitSizeGHB        DoseUnitSize = 1120.0 * 1000              // 1mL = 1120.0mg of GHB at 25°C * to get μg
 	DoseUnitSizeGBL        DoseUnitSize = 1129.6 * 1000              // 1mL = 1129.6mg of GBL at 20°C * to get μg
@@ -210,6 +211,8 @@ func (s DoseStat) UpdateUnit(u string) DoseStat {
 	}
 
 	switch u {
+	case "kg":
+		s.UnitSize = DoseUnitSizeKilogram
 	case "g":
 		s.UnitSize = DoseUnitSizeGram
 	case "mg":
@@ -482,7 +485,7 @@ func main() {
 
 			// convert from micrograms to larger units if too big
 			switch v.Unit {
-			case "g", "mg", "μg", "µg":
+			case "kg", "g", "mg", "μg", "µg":
 				if v.TotalAmount >= 1000 {
 					v = v.UpdateUnit("mg")
 					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
@@ -490,6 +493,11 @@ func main() {
 
 				if v.TotalAmount >= 1000 {
 					v = v.UpdateUnit("g")
+					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
+				}
+
+				if v.TotalAmount >= 1000 {
+					v = v.UpdateUnit("kg")
 					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
 				}
 			}
