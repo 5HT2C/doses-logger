@@ -102,7 +102,16 @@ func (d *DisplayOptions) Parse() {
 		showLast = 5
 	}
 
-	options = DisplayOptions{Mode: mode, Json: *optJ, Unix: *optU, DotTime: *optT, Reversed: *optR, FilterInvert: *optV, Filter: *optG, Show: showLast}
+	options = DisplayOptions{
+		Mode:         mode,
+		Json:         *optJ,
+		Unix:         *optU,
+		DotTime:      *optT,
+		Reversed:     *optR,
+		FilterInvert: *optV,
+		Filter:       *optG,
+		Show:         showLast,
+	}
 }
 
 func (d *DisplayOptions) Stash() {
