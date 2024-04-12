@@ -41,7 +41,7 @@ var (
 	optT   = flag.Bool("t", false, "Show dottime format in non-json mode")
 	optR   = flag.Bool("r", false, "Show in reverse order")
 	optV   = flag.Bool("v", false, "Inverse filter for text")
-	optG   = flag.String("g", "", "Filter for text")
+	optG   = flag.String("g", "", "Filter for text (does not apply to -add or -rm)")
 	optN   = flag.Int("n", 0, "Show last n doses, -1 = all")
 
 	aTimezone = flag.String("timezone", "", "Set timezone")
@@ -280,15 +280,7 @@ func main() {
 
 	switch options.Mode {
 	case ModeGet:
-		if options.Filter == "" {
-			fmt.Printf("%s", getDoses(doses))
-		} else {
-			if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
-				fmt.Printf("Couldn't compile regex: %s\n", err)
-			} else {
-				fmt.Printf("%s", getDosesFiltered(doses, filter))
-			}
-		}
+		fmt.Printf("%s", getDoses(doses, true))
 	case ModeRm:
 		pos, posIndex := -1, -1
 
@@ -309,7 +301,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", getDoses(doses))
+		fmt.Printf("%s", getDoses(doses, false))
 	case ModeAdd:
 		if *aDrug == "" {
 			fmt.Printf("`-drug` is not set!\n")
@@ -409,7 +401,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", getDoses(doses))
+		fmt.Printf("%s", getDoses(doses, false))
 	case ModeStatTop, ModeStatAvg:
 		dosesFiltered := make([]Dose, 0)
 
@@ -618,7 +610,7 @@ func saveFileWrapper(content any, path string) (r bool) {
 			options.DotTime = true
 			//options.Reversed = true
 
-			r2 = saveFile(getDoses(t), txtPath)
+			r2 = saveFile(getDoses(t, false), txtPath)
 			options.Pop()
 		default:
 			fmt.Printf("content.(type) is not a []Dose and we're saving /doses.json! If you're reading this, blame frogg.ie\n")
@@ -673,39 +665,30 @@ func saveFile(content any, path string) (r bool) {
 	return true
 }
 
-func getDoses(doses []Dose) string {
-	return getDosesFiltered(doses, nil)
-}
-
-func getDosesFiltered(doses []Dose, filter *regexp.Regexp) string {
-	if options.Reversed {
-		SliceReverse(doses)
+func getDoses(doses []Dose, useFilter bool) string {
+	if !useFilter {
+		return getDosesFormatted(doses, nil)
 	}
 
+	if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
+		return fmt.Sprintf("Couldn't compile regex: %s\n", err)
+	} else {
+		return getDosesFormatted(doses, filter)
+	}
+}
+
+func getDosesFormatted(doses []Dose, filter *regexp.Regexp) string {
 	if options.Json {
-		dosesFiltered := make([]Dose, 0)
-
-		if filter == nil {
-			dosesFiltered = append(dosesFiltered, doses...)
-		} else {
-			for _, d := range doses {
-				if options.FilterInvert != filter.MatchString(d.String()) {
-					dosesFiltered = append(dosesFiltered, d)
-				}
-			}
-		}
-
-		if options.Show > len(dosesFiltered) || options.Show <= 0 {
-			options.Show = len(dosesFiltered)
-		}
-
-		j, err := jsonMarshal(dosesFiltered[len(dosesFiltered)-options.Show:])
+		d := getDosesFiltered(doses, filter)
+		j, err := jsonMarshal(d)
 		if err != nil {
-			return ""
+			return fmt.Sprintf(`[{"name": "%s"}]`, err)
 		}
 
 		return j
 	} else {
+		// reimplement the same logic as getDosesFiltered to avoid running dose.String() twice
+		// this is because we use the plain string format more often than the json one
 		dosesStr := ""
 		for _, dose := range doses {
 			dStr := dose.String() + "\n"
@@ -716,6 +699,32 @@ func getDosesFiltered(doses []Dose, filter *regexp.Regexp) string {
 		}
 		return Tail(dosesStr, options.Show)
 	}
+}
+
+func getDosesFiltered(doses []Dose, filter *regexp.Regexp) []Dose {
+	if options.Reversed {
+		SliceReverse(doses)
+	}
+
+	dosesFiltered := make([]Dose, 0)
+
+	if filter == nil {
+		dosesFiltered = append(dosesFiltered, doses...)
+	} else {
+		for _, d := range doses {
+			if options.FilterInvert != filter.MatchString(d.String()) {
+				dosesFiltered = append(dosesFiltered, d)
+			}
+		}
+	}
+
+	// Set limit of show length (number of doses to display, if less than 0 display all)
+	if options.Show > len(dosesFiltered) || options.Show <= 0 {
+		options.Show = len(dosesFiltered)
+	}
+
+	// slice range to limit of show length
+	return dosesFiltered[len(dosesFiltered)-options.Show:]
 }
 
 func SliceRemoveIndex[T comparable](s []T, i int) []T {
