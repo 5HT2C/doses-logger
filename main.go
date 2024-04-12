@@ -40,6 +40,7 @@ var (
 	optU   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
 	optT   = flag.Bool("t", false, "Show dottime format in non-json mode")
 	optR   = flag.Bool("r", false, "Show in reverse order")
+	optS   = flag.Bool("s", false, "Start reading doses from top (applies before anything else)")
 	optV   = flag.Bool("v", false, "Inverse filter for text")
 	optG   = flag.String("g", "", "Filter for text (does not apply to -add or -rm)")
 	optN   = flag.Int("n", 0, "Show last n doses, -1 = all (applied after filters)")
@@ -78,6 +79,7 @@ type DisplayOptions struct {
 	Unix         bool
 	DotTime      bool
 	Reversed     bool
+	StartAtTop   bool
 	FilterInvert bool
 	Filter       string
 	FilterRegex  *regexp.Regexp
@@ -108,6 +110,7 @@ func (d *DisplayOptions) Parse() {
 		Unix:         *optU,
 		DotTime:      *optT,
 		Reversed:     *optR,
+		StartAtTop:   *optS,
 		FilterInvert: *optV,
 		Filter:       *optG,
 		Show:         showLast,
@@ -702,7 +705,7 @@ func getDosesFmt(doses []Dose) string {
 }
 
 func getDoses(doses []Dose) []Dose {
-	if options.Reversed {
+	if options.StartAtTop {
 		SliceReverse(doses)
 	}
 
@@ -724,7 +727,13 @@ func getDoses(doses []Dose) []Dose {
 	}
 
 	// slice range to limit of show length
-	return dosesFiltered[len(dosesFiltered)-options.Show:]
+	dosesCut := dosesFiltered[len(dosesFiltered)-options.Show:]
+
+	if (options.StartAtTop && !options.Reversed) || (!options.StartAtTop && options.Reversed) {
+		SliceReverse(dosesCut)
+	}
+
+	return dosesCut
 }
 
 func SliceRemoveIndex[T comparable](s []T, i int) []T {
