@@ -42,7 +42,7 @@ var (
 	optR   = flag.Bool("r", false, "Show in reverse order")
 	optV   = flag.Bool("v", false, "Inverse filter for text")
 	optG   = flag.String("g", "", "Filter for text (does not apply to -add or -rm)")
-	optN   = flag.Int("n", 0, "Show last n doses, -1 = all")
+	optN   = flag.Int("n", 0, "Show last n doses, -1 = all (applied after filters)")
 
 	aTimezone = flag.String("timezone", "", "Set timezone")
 	aDate     = flag.String("date", "", "Set date (defaults to now)")
@@ -96,8 +96,9 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeStatAvg
 	}
 
+	// If we're not in a stat mode and the user hasn't set showLast, set it to 5 as a sane default
 	showLast := *optN
-	if showLast == 0 {
+	if showLast == 0 && mode != ModeStatTop && mode != ModeStatAvg {
 		showLast = 5
 	}
 
@@ -266,7 +267,7 @@ func main() {
 	}
 
 	// We do not filter in ModeRm and ModeAdd for performance reasons
-	if options.Mode != ModeRm && options.Mode != ModeAdd && options.Filter != "" {
+	if options.Filter != "" && options.Mode != ModeRm && options.Mode != ModeAdd {
 		if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
 			fmt.Printf("-g is set but failed to compile regex: %s\n", err)
 			return
