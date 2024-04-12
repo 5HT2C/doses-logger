@@ -197,12 +197,12 @@ func (s DoseStat) UpdateUnit(u string) DoseStat {
 	}
 
 	if u == "mL" {
-		switch {
-		case s.Drug == "GHB":
+		switch s.Drug {
+		case "GHB":
 			s.UnitSize = DoseUnitSizeGHB
-		case s.Drug == "GBL":
+		case "GBL":
 			s.UnitSize = DoseUnitSizeGBL
-		case s.Drug == "BDO":
+		case "BDO":
 			s.UnitSize = DoseUnitSizeBDO
 		default:
 			s.UnitSize = DoseUnitSizeMilliliter
