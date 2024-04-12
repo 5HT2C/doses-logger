@@ -184,6 +184,7 @@ const (
 
 type DoseStat struct {
 	Drug        string
+	IsSpecial   bool
 	TotalDoses  int64
 	TotalAmount float64 // in micrograms
 	Unit        string
@@ -418,7 +419,7 @@ func main() {
 		doses = getDoses(doses)
 
 		stats := make(map[string]DoseStat)
-		statTotal := DoseStat{Drug: "Total"}
+		statTotal := DoseStat{Drug: "Total", IsSpecial: true}
 		statTotal = statTotal.UpdateUnit("μg")
 
 		if options.Mode == ModeStatAvg {
@@ -498,10 +499,19 @@ func main() {
 
 		// If total doses is the same, sort by total amount
 		// Then sort by total doses
-		sort.Slice(doseStats, func(i, j int) bool {
+		sort.SliceStable(doseStats, func(i, j int) bool {
+			if doseStats[i].IsSpecial && !doseStats[j].IsSpecial {
+				return false
+			}
+
+			if !doseStats[i].IsSpecial && doseStats[j].IsSpecial {
+				return true
+			}
+
 			if doseStats[i].TotalDoses == doseStats[j].TotalDoses {
 				return doseStats[i].TotalAmount*float64(doseStats[i].UnitSize) < doseStats[j].TotalAmount*float64(doseStats[j].UnitSize)
 			}
+
 			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
 		})
 
