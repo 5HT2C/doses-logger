@@ -20,7 +20,7 @@ import (
 var (
 	caser       = cases.Title(language.English)
 	client      = http.DefaultClient
-	dosageRegex = regexp.MustCompile("([0-9.]+)([ -_]+)?([μµ]g|mg|g|u|x|mL|)?")
+	dosageRegex = regexp.MustCompile("([0-9.]+)([ -_]+)?([μµ]g|mg|g|kg|u|x|mL|)?")
 
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
 	options  = DisplayOptions{}
