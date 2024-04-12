@@ -80,6 +80,7 @@ type DisplayOptions struct {
 	Reversed     bool
 	FilterInvert bool
 	Filter       string
+	FilterRegex  *regexp.Regexp
 	Show         int
 }
 
@@ -264,6 +265,16 @@ func main() {
 		return
 	}
 
+	// We do not filter in ModeRm and ModeAdd for performance reasons
+	if options.Mode != ModeRm && options.Mode != ModeAdd && options.Filter != "" {
+		if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
+			fmt.Printf("-g is set but failed to compile regex: %s\n", err)
+			return
+		} else {
+			options.FilterRegex = filter
+		}
+	}
+
 	var err error
 	var doses []Dose
 	//var prefs MainPreferences
@@ -280,7 +291,7 @@ func main() {
 
 	switch options.Mode {
 	case ModeGet:
-		fmt.Printf("%s", getDoses(doses, true))
+		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeRm:
 		pos, posIndex := -1, -1
 
@@ -301,7 +312,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", getDoses(doses, false))
+		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeAdd:
 		if *aDrug == "" {
 			fmt.Printf("`-drug` is not set!\n")
@@ -401,23 +412,9 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%s", getDoses(doses, false))
+		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeStatTop, ModeStatAvg:
-		dosesFiltered := make([]Dose, 0)
-
-		if options.Filter == "" {
-			dosesFiltered = append(dosesFiltered, doses...)
-		} else {
-			if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil || filter == nil {
-				fmt.Printf("Couldn't compile regex: %s\n", err)
-			} else {
-				for _, d := range doses {
-					if options.FilterInvert != filter.MatchString(d.String()) {
-						dosesFiltered = append(dosesFiltered, d)
-					}
-				}
-			}
-		}
+		doses = getDoses(doses)
 
 		stats := make(map[string]DoseStat)
 		statTotal := DoseStat{Drug: "Total"}
@@ -429,7 +426,7 @@ func main() {
 
 		//
 		// increment total doses and total amount for each drug
-		for _, d := range dosesFiltered {
+		for _, d := range doses {
 			stat := stats[d.Drug]
 			stat.Drug = d.Drug
 			stat.TotalDoses += 1
@@ -610,7 +607,7 @@ func saveFileWrapper(content any, path string) (r bool) {
 			options.DotTime = true
 			//options.Reversed = true
 
-			r2 = saveFile(getDoses(t, false), txtPath)
+			r2 = saveFile(getDosesFmt(t), txtPath)
 			options.Pop()
 		default:
 			fmt.Printf("content.(type) is not a []Dose and we're saving /doses.json! If you're reading this, blame frogg.ie\n")
@@ -665,21 +662,9 @@ func saveFile(content any, path string) (r bool) {
 	return true
 }
 
-func getDoses(doses []Dose, useFilter bool) string {
-	if !useFilter {
-		return getDosesFormatted(doses, nil)
-	}
-
-	if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
-		return fmt.Sprintf("Couldn't compile regex: %s\n", err)
-	} else {
-		return getDosesFormatted(doses, filter)
-	}
-}
-
-func getDosesFormatted(doses []Dose, filter *regexp.Regexp) string {
+func getDosesFmt(doses []Dose) string {
 	if options.Json {
-		d := getDosesFiltered(doses, filter)
+		d := getDoses(doses)
 		j, err := jsonMarshal(d)
 		if err != nil {
 			return fmt.Sprintf(`[{"name": "%s"}]`, err)
@@ -687,13 +672,15 @@ func getDosesFormatted(doses []Dose, filter *regexp.Regexp) string {
 
 		return j
 	} else {
-		// reimplement the same logic as getDosesFiltered to avoid running dose.String() twice
+		// reimplement the same logic as getDoses to avoid running dose.String() twice
 		// this is because we use the plain string format more often than the json one
 		dosesStr := ""
 		for _, dose := range doses {
 			dStr := dose.String() + "\n"
 
-			if filter == nil || (filter != nil && (options.FilterInvert != filter.MatchString(dStr))) { // options.Filter
+			if options.FilterRegex == nil {
+				dosesStr += dStr
+			} else if options.FilterInvert != options.FilterRegex.MatchString(dStr) {
 				dosesStr += dStr
 			}
 		}
@@ -701,18 +688,18 @@ func getDosesFormatted(doses []Dose, filter *regexp.Regexp) string {
 	}
 }
 
-func getDosesFiltered(doses []Dose, filter *regexp.Regexp) []Dose {
+func getDoses(doses []Dose) []Dose {
 	if options.Reversed {
 		SliceReverse(doses)
 	}
 
 	dosesFiltered := make([]Dose, 0)
 
-	if filter == nil {
+	if options.FilterRegex == nil {
 		dosesFiltered = append(dosesFiltered, doses...)
 	} else {
 		for _, d := range doses {
-			if options.FilterInvert != filter.MatchString(d.String()) {
+			if options.FilterInvert != options.FilterRegex.MatchString(d.String()) {
 				dosesFiltered = append(dosesFiltered, d)
 			}
 		}
