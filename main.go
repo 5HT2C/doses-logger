@@ -674,8 +674,9 @@ func saveFile(content any, path string) (r bool) {
 }
 
 func getDosesFmt(doses []Dose) string {
+	d := getDoses(doses)
+
 	if options.Json {
-		d := getDoses(doses)
 		j, err := jsonMarshal(d)
 		if err != nil {
 			return fmt.Sprintf(`[{"name": "%s"}]`, err)
@@ -683,17 +684,9 @@ func getDosesFmt(doses []Dose) string {
 
 		return j
 	} else {
-		// reimplement the same logic as getDoses to avoid running dose.String() twice
-		// this is because we use the plain string format more often than the json one
 		dosesStr := ""
-		for _, dose := range doses {
-			dStr := dose.String() + "\n"
-
-			if options.FilterRegex == nil {
-				dosesStr += dStr
-			} else if options.FilterInvert != options.FilterRegex.MatchString(dStr) {
-				dosesStr += dStr
-			}
+		for _, dose := range d {
+			dosesStr += dose.String() + "\n"
 		}
 		return Tail(dosesStr, options.Show)
 	}
