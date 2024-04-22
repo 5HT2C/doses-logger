@@ -30,7 +30,11 @@ y_num() {
 }
 
 create-dates-year() {
-    ./doses-logger -n -1 -j | jq -r '.[] | .date + "," + .drug + "," + .note' | rg -f therapeutic.txt -v | rg -f count-filter.txt | cut -d "," -f 1 | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
+    if [[ -z "$2" ]]; then
+        ./doses-logger -n -1 -j | jq -r '.[] | .date + "," + .drug + "," + .note' | rg -f therapeutic.txt -v | rg -f count-filter.txt | cut -d "," -f 1 | grep -E "^$1" | sort | uniq -c | awk '{printf "%s,%s\n", $2,$1}' > dates.txt
+    else
+        ./doses-logger -n -1 -j -g "$1.*$2" -j | jq -r '.[] | .date + "," + .dosage' | awk '{split($0,a,","); t[a[1]] += a[2];} END { for (key in t) { printf "%s,%s\n", key, t[key]; } }' | sort > dates.txt
+    fi
 }
 
 add-zero-days() {
@@ -50,7 +54,7 @@ add-zero-days() {
     done < dates.txt
 }
 
-create-dates-year "$1"
+create-dates-year "$1" "$2"
 add-zero-days "$1"
 rm dates.txt
 [[ "$RM_EXCLUDE_FILE" ]] && rm count-filter.txt
