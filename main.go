@@ -46,8 +46,8 @@ var (
 	optN   = flag.Int("n", 0, "Show last n doses, -1 = all (applied after filters)")
 
 	aTimezone = flag.String("timezone", "", "Set timezone")
-	aDate     = flag.String("date", "", "Set date (defaults to now)")
-	aTime     = flag.String("time", "", "Set time (defaults to now)")
+	aDate     = flag.String("date", "", "Set date (default \"time.Now()\")")
+	aTime     = flag.String("time", "", "Set time (default \"time.Now()\")")
 	aDosage   = flag.String("a", "", "Set dosage")
 	aDrug     = flag.String("d", "", "Set drug name")
 	aRoa      = flag.String("roa", "", "Set RoA")
