@@ -436,7 +436,7 @@ func main() {
 		}
 
 		dose := Dose{
-			Position:  lastPosition(doses) + 1,
+			Position:  lastPosition(doses),
 			Timestamp: t,
 			Timezone:  timezone,
 			Date:      t.Format("2006/01/02"),
@@ -627,16 +627,13 @@ func caseFmt(s string) string {
 
 func lastPosition(doses []Dose) int {
 	n := -1
-	for n1 := range doses {
-		if n1 > n {
-			n = n1
+	for _, d := range doses {
+		if d.Position > n {
+			n = d.Position
 		}
 	}
-	if n == -1 {
-		return 0
-	}
 
-	return n
+	return n + 1
 }
 
 func saveFileWrapper(doses []Dose) (r bool) {
