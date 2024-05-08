@@ -23,8 +23,7 @@ var (
 	dosageRegex = regexp.MustCompile("([0-9.]+)([ -_]+)?([μµ]g|mg|g|kg|u|x|mL|)?")
 
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
-	options  = DisplayOptions{}
-	options2 = DisplayOptions{}
+	options  = &DisplayOptions{}
 	dLayouts = []string{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006"}
 	tLayouts = []string{"3:04pm", "15:04", "3:04", "1504"}
 	timeZero = time.Unix(0, 0)
@@ -73,6 +72,23 @@ const (
 	ModeStatAvg
 )
 
+func (m Mode) String() string {
+	switch m {
+	case ModeGet:
+		return "-get"
+	case ModeAdd:
+		return "-add"
+	case ModeRm:
+		return "-rm"
+	case ModeStatTop:
+		return "-stat-top"
+	case ModeStatAvg:
+		return "-stat-avg"
+	default:
+		return "-default"
+	}
+}
+
 type DisplayOptions struct {
 	Mode
 	Json         bool
@@ -104,7 +120,7 @@ func (d *DisplayOptions) Parse() {
 		showLast = 5
 	}
 
-	options = DisplayOptions{
+	options = &DisplayOptions{
 		Mode:         mode,
 		Json:         *optJ,
 		Unix:         *optU,
@@ -117,12 +133,24 @@ func (d *DisplayOptions) Parse() {
 	}
 }
 
-func (d *DisplayOptions) Stash() {
-	options2 = options
+func (d *DisplayOptions) String() string {
+	j, err := json.MarshalIndent(d, "", "    ")
+	if err != nil {
+		j = []byte(fmt.Sprintf("error marshalling json: %v", err))
+	}
+
+	return fmt.Sprintf("%s", j)
 }
 
-func (d *DisplayOptions) Pop() {
-	options = options2
+func (d *DisplayOptions) MarshalJSON() ([]byte, error) {
+	type Alias DisplayOptions
+	return json.Marshal(&struct {
+		Mode string
+		*Alias
+	}{
+		Mode:  d.Mode.String(),
+		Alias: (*Alias)(d),
+	})
 }
 
 type Dose struct { // timezone,date,time,dosage,drug,roa,note
@@ -150,7 +178,7 @@ func (d Dose) ParsedTime() (time.Time, error) {
 	}
 }
 
-func (d Dose) String() string {
+func (d Dose) StringOptions(options *DisplayOptions) string {
 	note := ""
 	if d.Note != "" {
 		note = ", Note: " + d.Note
@@ -178,6 +206,10 @@ func (d Dose) String() string {
 
 	// print regular format
 	return fmt.Sprintf("%s%s%s %s, %s%s", unix, d.Timestamp.Format("2006/01/02 15:04"), dosage, d.Drug, d.RoA, note)
+}
+
+func (d Dose) String() string {
+	return d.StringOptions(options)
 }
 
 type DoseUnitSize int64
@@ -322,7 +354,7 @@ func main() {
 			doses = SliceRemoveIndex(doses, posIndex)
 		}
 
-		if !saveFileWrapper(doses, *dosesUrl) {
+		if !saveFileWrapper(doses) {
 			return
 		}
 
@@ -422,7 +454,7 @@ func main() {
 			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
 		})
 
-		if !saveFileWrapper(doses, *dosesUrl) {
+		if !saveFileWrapper(doses) {
 			return
 		}
 
@@ -445,7 +477,7 @@ func main() {
 			stat.Drug = d.Drug
 			stat.TotalDoses += 1
 			statTotal.TotalDoses += 1
-			stats[d.Drug] = stat // we still want to save the stat so we can increment the total doses even if the dosage is not set or fails to parse
+			stats[d.Drug] = stat // we still want to save the stat, so we can increment the total doses even if the dosage is not set or fails to parse
 
 			units := dosageRegex.FindStringSubmatch(d.Dosage)
 			if len(units) != 4 {
@@ -607,43 +639,29 @@ func lastPosition(doses []Dose) int {
 	return n
 }
 
-func jsonMarshal(content any) (string, error) {
-	b, err := json.MarshalIndent(content, "", "    ")
-	if err != nil {
-		fmt.Printf("error marshalling json: %v\n", b)
+func saveFileWrapper(doses []Dose) (r bool) {
+	optionsJson := &DisplayOptions{Json: true}
+	optionsTxt := &DisplayOptions{
+		DotTime:    true,
+		Reversed:   true,
+		StartAtTop: true,
 	}
-	return string(b), err
-}
 
-func saveFileWrapper(content any, path string) (r bool) {
-	var r1, r2 bool
-	r1 = saveFile(content, path)
-
-	txtPath := strings.TrimSuffix(path, "/doses.json") + "/doses.txt"
-
-	// faster way of checking if path changed correctly. if it didn't have the right suffix, txtPath will be longer
-	if r1 && len(txtPath) < len(path) {
-
-		switch t := content.(type) {
-		case []Dose:
-			options.Stash()
-			options.DotTime = true
-			//options.Reversed = true
-
-			r2 = saveFile(getDosesFmt(t), txtPath)
-			options.Pop()
-		default:
-			fmt.Printf("content.(type) is not a []Dose and we're saving /doses.json! If you're reading this, blame frogg.ie\n")
+	if content, err := getDosesFmtOptions(doses, optionsJson); err == nil {
+		if !saveFile(content, *dosesUrl) {
+			return false
 		}
 
-	} else { // don't try to save non-default file with a .txt
-		r2 = true
+		// Don't try to save a .txt if saving the main db failed, we don't want to imply to the user that the db is fine
+		if content, err := getDosesFmtOptions(doses, optionsTxt); err == nil {
+			return saveFile(content, strings.TrimSuffix(*dosesUrl, ".json")+".txt")
+		}
 	}
 
-	return r1 && r2
+	return false
 }
 
-func saveFile(content any, path string) (r bool) {
+func saveFile(content string, path string) (r bool) {
 	if *urlToken == "" {
 		fmt.Printf("`-token` not set!\n")
 		return false
@@ -651,12 +669,7 @@ func saveFile(content any, path string) (r bool) {
 
 	u := strings.Replace(path, "media/", "public/media/", 1)
 
-	j, err := jsonMarshal(content)
-	if err != nil { // handled by jsonMarshal
-		return false
-	}
-
-	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {j + "\n"}}.Encode()))
+	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {content}}.Encode()))
 	if err != nil {
 		fmt.Printf("failed to make new request: %v\n", err)
 		return false
@@ -666,7 +679,7 @@ func saveFile(content any, path string) (r bool) {
 	req.Header.Set("Auth", *urlToken)
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("error posting body: %s\n", j)
+		fmt.Printf("error posting body: %v\n%s\n", err, content)
 		return false
 	}
 
@@ -686,43 +699,57 @@ func saveFile(content any, path string) (r bool) {
 }
 
 func getDosesFmt(doses []Dose) string {
-	d := getDoses(doses)
+	content, _ := getDosesFmtOptions(doses, options)
+	return content
+}
+
+func getDosesFmtOptions(doses []Dose, options *DisplayOptions) (string, error) {
+	d := getDosesOptions(doses, options)
 
 	if options.Json {
-		j, err := jsonMarshal(d)
+		j, err := json.MarshalIndent(doses, "", "    ")
 		if err != nil {
-			return fmt.Sprintf(`[{"name": "%s"}]`, err)
+			fmt.Printf("Failed to format doses: %v\n", err)
 		}
 
-		return j
+		return string(j) + "\n", err
 	} else {
 		dosesStr := ""
+
 		for _, dose := range d {
-			dosesStr += dose.String() + "\n"
+			dosesStr += dose.StringOptions(options) + "\n"
 		}
-		return Tail(dosesStr, options.Show)
+
+		return Tail(dosesStr, options.Show), nil
 	}
 }
 
 func getDoses(doses []Dose) []Dose {
+	return getDosesOptions(doses, options)
+}
+
+func getDosesOptions(doses []Dose, options *DisplayOptions) []Dose {
+	dosesTrans := make([]Dose, 0)
+	dosesTrans = append(dosesTrans, doses...)
+
 	if options.StartAtTop {
-		SliceReverse(doses)
+		SliceReverse(dosesTrans)
 	}
 
 	dosesFiltered := make([]Dose, 0)
 
 	if options.FilterRegex == nil {
-		dosesFiltered = append(dosesFiltered, doses...)
+		dosesFiltered = append(dosesFiltered, dosesTrans...)
 	} else {
-		for _, d := range doses {
-			if options.FilterInvert != options.FilterRegex.MatchString(d.String()) {
+		for _, d := range dosesTrans {
+			if options.FilterInvert != options.FilterRegex.MatchString(d.StringOptions(options)) {
 				dosesFiltered = append(dosesFiltered, d)
 			}
 		}
 	}
 
 	// Set limit of show length (number of doses to display, if less than 0 display all)
-	if options.Show > len(dosesFiltered) || options.Show <= 0 {
+	if options.Show <= 0 || options.Show > len(dosesFiltered) {
 		options.Show = len(dosesFiltered)
 	}
 
