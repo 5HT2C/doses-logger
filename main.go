@@ -704,7 +704,7 @@ func getDosesFmtOptions(doses []Dose, options *DisplayOptions) (string, error) {
 	d := getDosesOptions(doses, options)
 
 	if options.Json {
-		j, err := json.MarshalIndent(doses, "", "    ")
+		j, err := json.MarshalIndent(d, "", "    ")
 		if err != nil {
 			fmt.Printf("Failed to format doses: %v\n", err)
 		}
