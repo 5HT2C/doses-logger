@@ -33,6 +33,7 @@ var (
 
 	optAdd = flag.Bool("add", false, "Set to add a dose")
 	optRm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
+	optSav = flag.Bool("save", false, "Run a manual save to re-generate the .txt format after a manual edit")
 	optTop = flag.Bool("stat-top", false, "Set to view top statistics")
 	optAvg = flag.Bool("stat-avg", false, "Set to view average dose statistics")
 	optJ   = flag.Bool("j", false, "Set for json output")
@@ -68,6 +69,7 @@ const (
 	ModeGet = iota
 	ModeAdd
 	ModeRm
+	ModeSave
 	ModeStatTop
 	ModeStatAvg
 )
@@ -80,6 +82,8 @@ func (m Mode) String() string {
 		return "-add"
 	case ModeRm:
 		return "-rm"
+	case ModeSave:
+		return "-save"
 	case ModeStatTop:
 		return "-stat-top"
 	case ModeStatAvg:
@@ -108,6 +112,8 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeAdd
 	} else if *optRm {
 		mode = ModeRm
+	} else if *optSav {
+		mode = ModeSave
 	} else if *optTop {
 		mode = ModeStatTop
 	} else if *optAvg {
@@ -336,6 +342,10 @@ func main() {
 	//}
 
 	switch options.Mode {
+	case ModeSave:
+		if !saveFileWrapper(doses) {
+			fmt.Printf("Failed to save one or more doses files!\n")
+		}
 	case ModeGet:
 		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeRm:
