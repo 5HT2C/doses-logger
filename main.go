@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -29,7 +30,7 @@ var (
 	timeZero = time.Unix(0, 0)
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
-	urlToken = flag.String("token", "", "token for fs-over-http")
+	urlToken = flag.String("token", "", "token for fs-over-http (default $FOH_TOKEN or $FOH_SERVER_AUTH from env)")
 
 	optAdd = flag.Bool("add", false, "Set to add a dose")
 	optRm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
@@ -314,6 +315,7 @@ func (s DoseStat) Format(n1, n2 int) string {
 func main() {
 	flag.Parse()
 	options.Parse()
+	loadEnv()
 
 	if options.FilterInvert && options.Filter == "" {
 		fmt.Printf("-v is set but no -g filter is set? Can't invert filter without a filter to invert!\n")
@@ -706,6 +708,45 @@ func saveFile(content string, path string) (r bool) {
 	}
 
 	return true
+}
+
+func loadEnv() {
+	isFlagPassed := func(name string) bool {
+		found := false
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == name {
+				found = true
+			}
+		})
+		return found
+	}
+
+	loadVar := func(k string, fn func(v string)) bool {
+		token, ok := os.LookupEnv(k)
+		if ok {
+			fn(token)
+		}
+
+		return ok
+	}
+
+	if !isFlagPassed("token") {
+		loadToken := func(v string) {
+			*urlToken = v
+		}
+
+		if loadVar("FOH_TOKEN", loadToken) {
+			return
+		}
+
+		if loadVar("FOH_SERVER_AUTH", loadToken) {
+			return
+		}
+
+		if loadVar("TOKEN", loadToken) {
+			return
+		}
+	}
 }
 
 func getDosesFmt(doses []Dose) string {
