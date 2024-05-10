@@ -107,17 +107,20 @@ type DisplayOptions struct {
 }
 
 func (d *DisplayOptions) Parse() {
-	var mode Mode = ModeGet
-	if *optAdd {
+	var mode Mode
+	switch {
+	case *optAdd:
 		mode = ModeAdd
-	} else if *optRm {
+	case *optRm:
 		mode = ModeRm
-	} else if *optSav {
+	case *optSav:
 		mode = ModeSave
-	} else if *optTop {
+	case *optTop:
 		mode = ModeStatTop
-	} else if *optAvg {
+	case *optAvg:
 		mode = ModeStatAvg
+	default:
+		mode = ModeGet
 	}
 
 	// If we're not in a stat mode and the user hasn't set showLast, set it to 5 as a sane default
