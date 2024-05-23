@@ -19,6 +19,7 @@ Caffeine
 Calcium (Carbonate|Phosphate)
 (Cetrimide|Chlorhexidine Digluconate)
 Cetirizine
+Chloride
 Cholecalciferol
 Diclofenac Calcium
 Diclofenac Sodium
@@ -29,6 +30,7 @@ Esomeprazole
 Estradiol (Hemihydrate|Valerate|Enanthate|Undecylate)
 Formoterol
 Gabapentin.+Therapeutic
+Ginger
 Hexapeptide-38
 Ibuprofen
 Ketamine.+Therapeutic
@@ -52,6 +54,7 @@ Pagoclone.+Therapeutic
 Paracetamol
 Phenylethylamine
 Picamilon
+Potassium (Citrate)
 Pregabalin.+Therapeutic
 Procaine
 Progesterone
