@@ -606,7 +606,6 @@ func main() {
 				v.TotalAmount = v.TotalAmount / float64(v.TotalDoses)
 			}
 
-			// TODO: Optimize
 			// convert from micrograms to larger units if too big
 			switch v.Unit {
 			case DoseUnitSizeMicrogram, DoseUnitSizeMilligram, DoseUnitSizeGram, DoseUnitSizeKilogram:
@@ -622,8 +621,11 @@ func main() {
 		}
 		// stat.TotalAmount is **NOT IN MICROGRAMS ANYMORE**
 
+		// Sort by total doses
 		// If total doses is the same, sort by total amount
-		// Then sort by total doses
+		// If total amount is the same, sort by drug name being alphabetical
+		// If drug name starts with a unicode character, sort first
+		// Always ensures that the Total / Average stat is always at the bottom
 		sort.SliceStable(doseStats, func(i, j int) bool {
 			if doseStats[i].IsSpecial && !doseStats[j].IsSpecial {
 				return false
@@ -634,7 +636,17 @@ func main() {
 			}
 
 			if doseStats[i].TotalDoses == doseStats[j].TotalDoses {
-				return doseStats[i].TotalAmount*float64(doseStats[i].UnitSize) < doseStats[j].TotalAmount*float64(doseStats[j].UnitSize)
+				if doseStats[i].TotalAmount*doseStats[i].Unit.F() == doseStats[j].TotalAmount*doseStats[j].Unit.F() {
+					greekI := unicode.Is(unicode.Greek, []rune(doseStats[i].Drug)[0])
+					greekJ := unicode.Is(unicode.Greek, []rune(doseStats[j].Drug)[0])
+					if (greekI && !greekJ) && (greekI != greekJ) {
+						return true
+					}
+
+					return strings.Compare(doseStats[i].Drug, doseStats[j].Drug) <= 0
+				}
+
+				return doseStats[i].TotalAmount*doseStats[i].Unit.F() < doseStats[j].TotalAmount*doseStats[j].Unit.F()
 			}
 
 			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
