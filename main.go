@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -222,68 +223,121 @@ func (d Dose) String() string {
 	return d.StringOptions(options)
 }
 
+// DoseUnitSize represents a dose unit as a factor of micrograms equivalent
 type DoseUnitSize int64
 
 const (
-	DoseUnitSizeDefault    DoseUnitSize = 1
-	DoseUnitSizeMilliliter DoseUnitSize = 0
+	DoseUnitSizeDefault    DoseUnitSize = 0
+	DoseUnitSizeMicrogram  DoseUnitSize = 1
+	DoseUnitSizeMilliliter DoseUnitSize = -1 // TODO: FIX
 	DoseUnitSizeMilligram  DoseUnitSize = 1000
 	DoseUnitSizeGram       DoseUnitSize = 1000 * 1000
 	DoseUnitSizeKilogram   DoseUnitSize = 1000 * 1000 * 1000
-	DoseUnitSizeEthanol    DoseUnitSize = 0.1 * 0.7893 * 1000 * 1000 // 0.1mL = 1u of EtOH (g/mL) * to get micrograms
-	DoseUnitSizeGHB        DoseUnitSize = 1120.0 * 1000              // 1mL = 1120.0mg of GHB at 25°C * to get μg
-	DoseUnitSizeGBL        DoseUnitSize = 1129.6 * 1000              // 1mL = 1129.6mg of GBL at 20°C * to get μg
-	DoseUnitSizeBDO        DoseUnitSize = 1017.3 * 1000              // 1mL = 1017.3mg of 1,4-BDO at 25°C * to get μg
+	DoseUnitSizeAlcohol    DoseUnitSize = DoseUnitSizeEthanol / 10 // 1u  = 0.1mL of EtOH = 1 SI unit of Alcohol
+	DoseUnitSizeEthanol    DoseUnitSize = 789.45 * 1000            // 1mL = 789.45mg EtOH at 20°C * to get micrograms
+	DoseUnitSizeGHB        DoseUnitSize = 1120.0 * 1000            // 1mL = 1120.0mg of GHB at 25°C * to get μg
+	DoseUnitSizeGBL        DoseUnitSize = 1129.6 * 1000            // 1mL = 1129.6mg of GBL at 20°C * to get μg
+	DoseUnitSizeBDO        DoseUnitSize = 1017.3 * 1000            // 1mL = 1017.3mg of 1,4-BDO at 25°C * to get μg
 )
 
-type DoseStat struct {
-	Drug        string
-	IsSpecial   bool
-	TotalDoses  int64
-	TotalAmount float64 // in micrograms
-	Unit        string
-	UnitSize    DoseUnitSize
+func (u DoseUnitSize) String() string {
+	switch u {
+	case DoseUnitSizeMicrogram:
+		return "μg"
+	case DoseUnitSizeMilligram, DoseUnitSizeGHB:
+		return "mg"
+	case DoseUnitSizeGram:
+		return "g"
+	case DoseUnitSizeKilogram:
+		return "kg"
+	case DoseUnitSizeEthanol, DoseUnitSizeGBL, DoseUnitSizeBDO:
+		return "mL"
+	case DoseUnitSizeMilliliter, DoseUnitSizeAlcohol:
+		return "u"
+	default:
+		return ""
+	}
 }
 
-func (s DoseStat) UpdateUnit(u string) DoseStat {
-	s.Unit = u
+func (u DoseUnitSize) F() float64 {
+	return float64(u)
+}
 
-	if u == "u" && s.Drug == "Alcohol" {
-		s.UnitSize = DoseUnitSizeEthanol
+type DoseStat struct {
+	Drug         string
+	IsSpecial    bool
+	TotalDoses   int64
+	TotalAmount  float64 // in micrograms
+	Unit         DoseUnitSize
+	OriginalUnit DoseUnitSize
+}
+
+// To converts the TotalAmount to a new DoseUnitSize
+// TODO: Generify and use in normal doses
+func (s DoseStat) To(u DoseUnitSize) DoseStat {
+	if u == DoseUnitSizeDefault || u == s.Unit {
 		return s
 	}
 
-	if u == "mL" {
-		switch s.Drug {
-		case "GHB":
-			s.UnitSize = DoseUnitSizeGHB
-		case "GBL":
-			s.UnitSize = DoseUnitSizeGBL
-		case "BDO":
-			s.UnitSize = DoseUnitSizeBDO
-		default:
-			s.UnitSize = DoseUnitSizeMilliliter
+	if s.Unit == DoseUnitSizeMicrogram {
+		if s.Unit < u {
+			s.TotalAmount = s.TotalAmount / u.F()
+		} else {
+			s.TotalAmount = s.TotalAmount * u.F()
 		}
-		return s
+	} else {
+		if s.Unit < u {
+			s.TotalAmount = s.TotalAmount * s.Unit.F() / u.F()
+		} else {
+			s.TotalAmount = s.TotalAmount / s.Unit.F() * u.F()
+		}
 	}
 
-	switch u {
-	case "kg":
-		s.UnitSize = DoseUnitSizeKilogram
-	case "g":
-		s.UnitSize = DoseUnitSizeGram
-	case "mg":
-		s.UnitSize = DoseUnitSizeMilligram
-	default:
-		s.UnitSize = DoseUnitSizeDefault
-	}
-
+	s.Unit = u
 	return s
+}
+
+func ParseUnit(d, u string) DoseUnitSize {
+unit:
+	switch u {
+	case "", "?":
+		break unit
+	case "u":
+		switch d {
+		case "Alcohol":
+			return DoseUnitSizeAlcohol
+		default:
+			break unit
+		}
+	case "mL":
+		switch d {
+		case "EtOH", "Ethanol":
+			return DoseUnitSizeEthanol
+		case "GHB":
+			return DoseUnitSizeGHB
+		case "GBL":
+			return DoseUnitSizeGBL
+		case "BDO":
+			return DoseUnitSizeBDO
+		default:
+			return DoseUnitSizeMilliliter
+		}
+	case "kg":
+		return DoseUnitSizeKilogram
+	case "g":
+		return DoseUnitSizeGram
+	case "mg":
+		return DoseUnitSizeMilligram
+	default:
+		return DoseUnitSizeMicrogram
+	}
+
+	return DoseUnitSizeDefault
 }
 
 func (s DoseStat) Format(n1, n2 int) string {
 	offset := 0
-	if strings.ContainsAny(s.Unit, "μµ") {
+	if strings.ContainsAny(s.Unit.String(), "μµ") {
 		offset = 1
 	}
 
@@ -300,7 +354,7 @@ func (s DoseStat) Format(n1, n2 int) string {
 				s.TotalAmount,
 			), "0",
 		), ".",
-	) + s.Unit
+	) + s.Unit.String()
 
 	// TODO: Make offset dynamic
 	offset = n2 - len(f2) + offset
@@ -479,13 +533,13 @@ func main() {
 
 		stats := make(map[string]DoseStat)
 		statTotal := DoseStat{Drug: "Total", IsSpecial: true}
-		statTotal = statTotal.UpdateUnit("μg")
 
 		if options.Mode == ModeStatAvg {
 			statTotal.Drug = "Average"
 		}
 
 		//
+		// stat.TotalAmount is in MICROGRAMS right now
 		// increment total doses and total amount for each drug
 		for _, d := range doses {
 			stat := stats[d.Drug]
@@ -504,18 +558,33 @@ func main() {
 				continue
 			}
 
-			stat = stat.UpdateUnit(units[3])
-			amountUg := amount * float64(stat.UnitSize)
+			// Get unitSize for current dose
+			unitSize := ParseUnit(stat.Drug, units[3])
+			stat.Unit = unitSize
 
-			switch stat.UnitSize {
-			case DoseUnitSizeMilliliter, DoseUnitSizeEthanol, DoseUnitSizeGHB, DoseUnitSizeGBL, DoseUnitSizeBDO:
-				stat.TotalAmount += amount
-			default:
-				stat.TotalAmount += amountUg
+			if stat.OriginalUnit == DoseUnitSizeDefault {
+				stat.OriginalUnit = unitSize
 			}
 
-			statTotal.TotalAmount += amountUg
+			// Nothing else to do, skip
+			if amount == 0 {
+				stats[d.Drug] = stat
+				continue
+			}
 
+			// We want to set the unit size of this stat if it isn't default.
+			// We also want to set total specifically here, in case we have a scenario where no doses have any units to go off of
+			if unitSize != DoseUnitSizeDefault {
+				stat.Unit = DoseUnitSizeMicrogram
+				statTotal.Unit = DoseUnitSizeMicrogram
+				statTotal.OriginalUnit = DoseUnitSizeMicrogram
+
+				// Convert amount to micrograms, set unit, so it is converted back to original later
+				amount = amount * unitSize.F()
+			}
+
+			stat.TotalAmount += amount
+			statTotal.TotalAmount += amount
 			stats[d.Drug] = stat
 		}
 
@@ -527,34 +596,31 @@ func main() {
 		doseStats := make([]DoseStat, 0)
 		stats["Total"] = statTotal
 
+		// stat.TotalAmount is in MICROGRAMS right now
 		for _, v := range stats {
-			// convert for average stats
+			// convert total amount in MICROGRAMS to correct unit
+			v = v.To(v.OriginalUnit)
+
+			// convert total amount to average amount
 			if options.Mode == ModeStatAvg {
 				v.TotalAmount = v.TotalAmount / float64(v.TotalDoses)
 			}
 
+			// TODO: Optimize
 			// convert from micrograms to larger units if too big
 			switch v.Unit {
-			case "kg", "g", "mg", "μg", "µg":
-				if v.TotalAmount >= 1000 {
-					v = v.UpdateUnit("mg")
-					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
-				}
-
-				if v.TotalAmount >= 1000 {
-					v = v.UpdateUnit("g")
-					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
-				}
-
-				if v.TotalAmount >= 1000 {
-					v = v.UpdateUnit("kg")
-					v.TotalAmount = v.TotalAmount / float64(DoseUnitSizeMilligram)
+			case DoseUnitSizeMicrogram, DoseUnitSizeMilligram, DoseUnitSizeGram, DoseUnitSizeKilogram:
+				for _, u := range []DoseUnitSize{DoseUnitSizeMilligram, DoseUnitSizeGram, DoseUnitSizeKilogram} {
+					if v.TotalAmount >= 1000 {
+						v = v.To(u)
+					}
 				}
 			}
 
 			// Now we can finally append to be sorted
 			doseStats = append(doseStats, v)
 		}
+		// stat.TotalAmount is **NOT IN MICROGRAMS ANYMORE**
 
 		// If total doses is the same, sort by total amount
 		// Then sort by total doses
