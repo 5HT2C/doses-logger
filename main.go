@@ -268,6 +268,7 @@ type DoseStat struct {
 	IsSpecial    bool
 	TotalDoses   int64
 	TotalAmount  float64 // in micrograms
+	UnitLabel    string  // See UnitOrLabel(): only set if no unit is known
 	Unit         DoseUnitSize
 	OriginalUnit DoseUnitSize
 }
@@ -295,6 +296,14 @@ func (s DoseStat) To(u DoseUnitSize) DoseStat {
 
 	s.Unit = u
 	return s
+}
+
+func (s DoseStat) UnitOrLabel() string {
+	if s.Unit.String() != "" {
+		return s.Unit.String()
+	}
+
+	return s.UnitLabel
 }
 
 func ParseUnit(d, u string) DoseUnitSize {
@@ -337,7 +346,7 @@ unit:
 
 func (s DoseStat) Format(n1, n2 int) string {
 	offset := 0
-	if strings.ContainsAny(s.Unit.String(), "μµ") {
+	if strings.ContainsAny(s.UnitOrLabel(), "μµ") {
 		offset = 1
 	}
 
@@ -354,7 +363,7 @@ func (s DoseStat) Format(n1, n2 int) string {
 				s.TotalAmount,
 			), "0",
 		), ".",
-	) + s.Unit.String()
+	) + s.UnitOrLabel()
 
 	// TODO: Make offset dynamic
 	offset = n2 - len(f2) + offset
@@ -559,11 +568,17 @@ func main() {
 			}
 
 			// Get unitSize for current dose
-			unitSize := ParseUnit(stat.Drug, units[3])
+			unitLabel := units[3]
+			unitSize := ParseUnit(stat.Drug, unitLabel)
 			stat.Unit = unitSize
 
+			// Only set original unit if it hasn't been set before
 			if stat.OriginalUnit == DoseUnitSizeDefault {
 				stat.OriginalUnit = unitSize
+
+				if stat.UnitLabel == "" {
+					stat.UnitLabel = unitLabel
+				}
 			}
 
 			// Nothing else to do, skip
@@ -581,6 +596,8 @@ func main() {
 
 				// Convert amount to micrograms, set unit, so it is converted back to original later
 				amount = amount * unitSize.F()
+			} else if statTotal.UnitLabel == "" {
+				statTotal.UnitLabel = unitLabel // Add a fallback label if it is a default unit size
 			}
 
 			stat.TotalAmount += amount
