@@ -594,7 +594,7 @@ func main() {
 		//
 		// go through each stat and convert smaller units to larger ones when appropriate
 		doseStats := make([]DoseStat, 0)
-		stats["Total"] = statTotal
+		stats[fmt.Sprintf("Special-%v", time.Now().UnixNano())] = statTotal
 
 		// stat.TotalAmount is in MICROGRAMS right now
 		for _, v := range stats {
