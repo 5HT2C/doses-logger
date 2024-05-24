@@ -695,11 +695,10 @@ func caseFmt(s string) string {
 	// This is useful for something like α-PHP, where otherwise caser.String(s) would return A-Php, which is not what we want.
 	// Initially I implemented this as a function that replaced lowercase greek with upper, but it's more efficient to simply remove the greek.
 	removeGreek := func(s string) string {
-		greek := map[rune]bool{'α': true}
 		sr := []rune(s)
 
 		for i, c := range sr {
-			if ok := greek[c]; ok {
+			if unicode.Is(unicode.Greek, c) {
 				sr = append(sr[0:i], sr[i+1:]...)
 			}
 		}
