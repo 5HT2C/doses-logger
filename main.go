@@ -605,16 +605,48 @@ func main() {
 			stats[d.Drug] = stat
 		}
 
-		// get the longest len to use for spacing later
-		highestLen := len(fmt.Sprintf("%v", statTotal.TotalDoses)) + 1
-
 		//
 		// go through each stat and convert smaller units to larger ones when appropriate
-		doseStats := make([]DoseStat, 0)
-		stats[fmt.Sprintf("Special-%v", time.Now().UnixNano())] = statTotal
+		statsOrdered := make([]DoseStat, 0)
+		for _, v := range stats {
+			statsOrdered = append(statsOrdered, v)
+		}
+
+		// Sort by total doses
+		// If total doses is the same, sort by total amount
+		// If total amount is the same, sort by drug name being alphabetical
+		// If drug name starts with a unicode character, sort first
+		// Always ensures that the Total / Average stat is always at the bottom
+		sort.SliceStable(statsOrdered, func(i, j int) bool {
+			if statsOrdered[i].IsSpecial && !statsOrdered[j].IsSpecial {
+				return false
+			}
+
+			if !statsOrdered[i].IsSpecial && statsOrdered[j].IsSpecial {
+				return true
+			}
+
+			if statsOrdered[i].TotalDoses == statsOrdered[j].TotalDoses {
+				if statsOrdered[i].TotalAmount*statsOrdered[i].Unit.F() == statsOrdered[j].TotalAmount*statsOrdered[j].Unit.F() {
+					greekI := unicode.Is(unicode.Greek, []rune(statsOrdered[i].Drug)[0])
+					greekJ := unicode.Is(unicode.Greek, []rune(statsOrdered[j].Drug)[0])
+					if (greekI && !greekJ) && (greekI != greekJ) {
+						return true
+					}
+
+					return strings.Compare(statsOrdered[i].Drug, statsOrdered[j].Drug) <= 0
+				}
+
+				return statsOrdered[i].TotalAmount*statsOrdered[i].Unit.F() < statsOrdered[j].TotalAmount*statsOrdered[j].Unit.F()
+			}
+
+			return statsOrdered[i].TotalDoses < statsOrdered[j].TotalDoses
+		})
+
+		statsOrdered = append(statsOrdered, statTotal)
 
 		// stat.TotalAmount is in MICROGRAMS right now
-		for _, v := range stats {
+		for k, v := range statsOrdered {
 			// convert total amount in MICROGRAMS to correct unit
 			v = v.To(v.OriginalUnit)
 
@@ -633,44 +665,15 @@ func main() {
 				}
 			}
 
-			// Now we can finally append to be sorted
-			doseStats = append(doseStats, v)
+			statsOrdered[k] = v
 		}
 		// stat.TotalAmount is **NOT IN MICROGRAMS ANYMORE**
 
-		// Sort by total doses
-		// If total doses is the same, sort by total amount
-		// If total amount is the same, sort by drug name being alphabetical
-		// If drug name starts with a unicode character, sort first
-		// Always ensures that the Total / Average stat is always at the bottom
-		sort.SliceStable(doseStats, func(i, j int) bool {
-			if doseStats[i].IsSpecial && !doseStats[j].IsSpecial {
-				return false
-			}
-
-			if !doseStats[i].IsSpecial && doseStats[j].IsSpecial {
-				return true
-			}
-
-			if doseStats[i].TotalDoses == doseStats[j].TotalDoses {
-				if doseStats[i].TotalAmount*doseStats[i].Unit.F() == doseStats[j].TotalAmount*doseStats[j].Unit.F() {
-					greekI := unicode.Is(unicode.Greek, []rune(doseStats[i].Drug)[0])
-					greekJ := unicode.Is(unicode.Greek, []rune(doseStats[j].Drug)[0])
-					if (greekI && !greekJ) && (greekI != greekJ) {
-						return true
-					}
-
-					return strings.Compare(doseStats[i].Drug, doseStats[j].Drug) <= 0
-				}
-
-				return doseStats[i].TotalAmount*doseStats[i].Unit.F() < doseStats[j].TotalAmount*doseStats[j].Unit.F()
-			}
-
-			return doseStats[i].TotalDoses < doseStats[j].TotalDoses
-		})
-
+		// get the longest len to use for spacing later, format lines
+		highestLen := len(fmt.Sprintf("%v", statTotal.TotalDoses)) + 1
 		lines := ""
-		for _, s := range doseStats {
+
+		for _, s := range statsOrdered {
 			lines += fmt.Sprintf("%s\n", s.Format(highestLen, 9))
 		}
 
