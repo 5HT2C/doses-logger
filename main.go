@@ -38,6 +38,7 @@ var (
 	optSav = flag.Bool("save", false, "Run a manual save to re-generate the .txt format after a manual edit")
 	optTop = flag.Bool("stat-top", false, "Set to view top statistics")
 	optAvg = flag.Bool("stat-avg", false, "Set to view average dose statistics")
+	optNts = flag.Bool("ignore-notes", false, "Set to hide notes (applies before filters)")
 	optJ   = flag.Bool("j", false, "Set for json output")
 	optU   = flag.Bool("u", false, "Show UNIX timestamp in non-json mode")
 	optT   = flag.Bool("t", false, "Show dottime format in non-json mode")
@@ -100,6 +101,7 @@ type DisplayOptions struct {
 	Json         bool
 	Unix         bool
 	DotTime      bool
+	IgnoreNotes  bool
 	Reversed     bool
 	StartAtTop   bool
 	FilterInvert bool
@@ -136,6 +138,7 @@ func (d *DisplayOptions) Parse() {
 		Json:         *optJ,
 		Unix:         *optU,
 		DotTime:      *optT,
+		IgnoreNotes:  *optNts,
 		Reversed:     *optR,
 		StartAtTop:   *optS,
 		FilterInvert: *optV,
@@ -191,7 +194,7 @@ func (d Dose) ParsedTime() (time.Time, error) {
 
 func (d Dose) StringOptions(options *DisplayOptions) string {
 	note := ""
-	if d.Note != "" {
+	if !options.IgnoreNotes && d.Note != "" {
 		note = ", Note: " + d.Note
 	}
 
