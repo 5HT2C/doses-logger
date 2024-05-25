@@ -500,8 +500,10 @@ func main() {
 			}
 		}
 
-		// Replace dosage U+00B5 with U+03BC
-		dosage := strings.ReplaceAll(*aDosage, "µ", "μ")
+		// Replace mathematical symbols in dosage with their greek variation:
+		dosage := *aDosage
+		dosage = strings.ReplaceAll(dosage, "µ", "μ") // U+00B5 → U+03BC
+		dosage = strings.ReplaceAll(dosage, "∆", "Δ") // U+2206 → U+0394
 
 		// Replace dosage ml with mL
 		if strings.HasSuffix(dosage, "ml") {
