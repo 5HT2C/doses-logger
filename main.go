@@ -265,7 +265,6 @@ func (u DoseUnitSize) F() float64 {
 
 type DoseStat struct {
 	Drug         string
-	IsSpecial    bool
 	TotalDoses   int64
 	TotalAmount  float64 // in micrograms
 	UnitLabel    string  // See UnitOrLabel(): only set if no unit is known
@@ -541,7 +540,7 @@ func main() {
 		doses = getDoses(doses)
 
 		stats := make(map[string]DoseStat)
-		statTotal := DoseStat{Drug: "Total", IsSpecial: true}
+		statTotal := DoseStat{Drug: "Total"}
 
 		if options.Mode == ModeStatAvg {
 			statTotal.Drug = "Average"
@@ -618,14 +617,6 @@ func main() {
 		// If drug name starts with a unicode character, sort first
 		// Always ensures that the Total / Average stat is always at the bottom
 		sort.SliceStable(statsOrdered, func(i, j int) bool {
-			if statsOrdered[i].IsSpecial && !statsOrdered[j].IsSpecial {
-				return false
-			}
-
-			if !statsOrdered[i].IsSpecial && statsOrdered[j].IsSpecial {
-				return true
-			}
-
 			if statsOrdered[i].TotalDoses == statsOrdered[j].TotalDoses {
 				if statsOrdered[i].TotalAmount*statsOrdered[i].Unit.F() == statsOrdered[j].TotalAmount*statsOrdered[j].Unit.F() {
 					greekI := unicode.Is(unicode.Greek, []rune(statsOrdered[i].Drug)[0])
