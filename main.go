@@ -624,8 +624,11 @@ func main() {
 				if statsOrdered[i].TotalAmount*statsOrdered[i].Unit.F() == statsOrdered[j].TotalAmount*statsOrdered[j].Unit.F() {
 					greekI := unicode.Is(unicode.Greek, []rune(statsOrdered[i].Drug)[0])
 					greekJ := unicode.Is(unicode.Greek, []rune(statsOrdered[j].Drug)[0])
-					if (greekI && !greekJ) && (greekI != greekJ) {
+					if greekI && !greekJ {
 						return true
+					}
+					if !greekI && greekJ {
+						return false
 					}
 
 					return strings.Compare(statsOrdered[i].Drug, statsOrdered[j].Drug) <= 0
