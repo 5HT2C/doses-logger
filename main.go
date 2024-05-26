@@ -554,7 +554,7 @@ func main() {
 
 		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeStatTop, ModeStatAvg:
-		doses = getDoses(doses)
+		doses = getDosesOptions(doses, options)
 
 		stats := make(map[string]DoseStat)
 		statTotal := DoseStat{Drug: "Total"}
@@ -874,10 +874,6 @@ func getDosesFmtOptions(doses []Dose, options *DisplayOptions) (string, error) {
 
 		return Tail(dosesStr, options.Show), nil
 	}
-}
-
-func getDoses(doses []Dose) []Dose {
-	return getDosesOptions(doses, options)
 }
 
 func getDosesOptions(doses []Dose, options *DisplayOptions) []Dose {
