@@ -275,11 +275,11 @@ type DoseStat struct {
 	OriginalUnit DoseUnitSize
 }
 
-// To converts the TotalAmount to a new DoseUnitSize
+// ToUnit converts the TotalAmount to a new DoseUnitSize
 // TODO: Generify and use in normal doses
-func (s DoseStat) To(u DoseUnitSize) DoseStat {
+func (s *DoseStat) ToUnit(u DoseUnitSize) {
 	if u == DoseUnitSizeDefault || u == s.Unit {
-		return s
+		return
 	}
 
 	if s.Unit == DoseUnitSizeMicrogram {
@@ -297,10 +297,10 @@ func (s DoseStat) To(u DoseUnitSize) DoseStat {
 	}
 
 	s.Unit = u
-	return s
 }
 
-func (s DoseStat) UnitOrLabel() string {
+// UnitOrLabel will return Unit as a string, or UnitLabel if it's Unit is not known.
+func (s *DoseStat) UnitOrLabel() string {
 	if s.Unit.String() != "" {
 		return s.Unit.String()
 	}
@@ -346,7 +346,7 @@ unit:
 	return DoseUnitSizeDefault
 }
 
-func (s DoseStat) Format(n1, n2 int) string {
+func (s *DoseStat) Format(n1, n2 int) string {
 	offset := 0
 	if strings.ContainsAny(s.UnitOrLabel(), "μµ") {
 		offset = 1
@@ -647,7 +647,7 @@ func main() {
 		// stat.TotalAmount is in MICROGRAMS right now
 		for k, v := range statsOrdered {
 			// convert total amount in MICROGRAMS to correct unit
-			v = v.To(v.OriginalUnit)
+			v.ToUnit(v.OriginalUnit)
 
 			// convert total amount to average amount
 			if options.Mode == ModeStatAvg {
