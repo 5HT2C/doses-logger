@@ -299,6 +299,18 @@ func (s *DoseStat) ToUnit(u DoseUnitSize) {
 	s.Unit = u
 }
 
+// ToSensibleUnit will convert to a larger weight unit if it's value is larger than 1000.
+func (s *DoseStat) ToSensibleUnit() {
+	for _, u := range []DoseUnitSize{DoseUnitSizeMicrogram, DoseUnitSizeMilligram, DoseUnitSizeGram} {
+		switch s.Unit {
+		case u:
+			if s.TotalAmount >= 1000 {
+				s.ToUnit(u * 1000)
+			}
+		}
+	}
+}
+
 // UnitOrLabel will return Unit as a string, or UnitLabel if it's Unit is not known.
 func (s *DoseStat) UnitOrLabel() string {
 	if s.Unit.String() != "" {
@@ -655,14 +667,7 @@ func main() {
 			}
 
 			// convert from micrograms to larger units if too big
-			switch v.Unit {
-			case DoseUnitSizeMicrogram, DoseUnitSizeMilligram, DoseUnitSizeGram, DoseUnitSizeKilogram:
-				for _, u := range []DoseUnitSize{DoseUnitSizeMilligram, DoseUnitSizeGram, DoseUnitSizeKilogram} {
-					if v.TotalAmount >= 1000 {
-						v = v.To(u)
-					}
-				}
-			}
+			v.ToSensibleUnit()
 
 			statsOrdered[k] = v
 		}
