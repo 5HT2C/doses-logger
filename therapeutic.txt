@@ -21,8 +21,7 @@ Calcium (Carbonate|Phosphate)
 Cetirizine
 Chloride
 Cholecalciferol
-Diclofenac Calcium
-Diclofenac Sodium
+Diclofenac (Calcium|Sodium)
 Dihydroergotamine
 Domperidone
 Epinephrine
