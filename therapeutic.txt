@@ -1,4 +1,5 @@
 Therapeutic
+(Cetrimide|Chlorhexidine Digluconate)
 5-HTP
 Acetylcarnitine
 Agmatine
@@ -17,7 +18,6 @@ Bromantane.+Therapeutic
 CBD
 Caffeine
 Calcium (Carbonate|Phosphate)
-(Cetrimide|Chlorhexidine Digluconate)
 Cetirizine
 Chloride
 Cholecalciferol
