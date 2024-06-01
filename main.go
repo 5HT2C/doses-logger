@@ -35,6 +35,7 @@ var (
 
 	optAdd = flag.Bool("add", false, "Set to add a dose")
 	optRm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
+	optRmP = flag.Int("rmp", -1, "Set to remove dose *by position*")
 	optSav = flag.Bool("save", false, "Run a manual save to re-generate the .txt format after a manual edit")
 	optTop = flag.Bool("stat-top", false, "Set to view top statistics")
 	optAvg = flag.Bool("stat-avg", false, "Set to view average dose statistics")
@@ -72,6 +73,7 @@ const (
 	ModeGet Mode = iota
 	ModeAdd
 	ModeRm
+	ModeRmPosition
 	ModeSave
 	ModeStatTop
 	ModeStatAvg
@@ -85,6 +87,8 @@ func (m Mode) String() string {
 		return "-add"
 	case ModeRm:
 		return "-rm"
+	case ModeRmPosition:
+		return "-rmp"
 	case ModeSave:
 		return "-save"
 	case ModeStatTop:
@@ -108,6 +112,7 @@ type DisplayOptions struct {
 	Filter       string
 	FilterRegex  *regexp.Regexp
 	Show         int
+	RmPosition   int
 }
 
 func (d *DisplayOptions) Parse() {
@@ -117,6 +122,8 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeAdd
 	case *optRm:
 		mode = ModeRm
+	case *optRmP > -1:
+		mode = ModeRmPosition
 	case *optSav:
 		mode = ModeSave
 	case *optTop:
@@ -144,6 +151,7 @@ func (d *DisplayOptions) Parse() {
 		FilterInvert: *optV,
 		Filter:       *optG,
 		Show:         showLast,
+		RmPosition:   *optRmP,
 	}
 }
 
@@ -444,6 +452,31 @@ func main() {
 		} else if len(doses) > posIndex {
 			doses = SliceRemoveIndex(doses, posIndex)
 		}
+
+		if !saveFileWrapper(doses) {
+			return
+		}
+
+		fmt.Printf("%s", getDosesFmt(doses))
+	case ModeRmPosition:
+		if len(doses) == 0 {
+			fmt.Printf("`%s` is set but there are no doses to remove?\n", ModeRmPosition)
+			return
+		}
+
+		posIndex := -1
+		for n, d := range doses {
+			if d.Position == options.RmPosition {
+				posIndex = n
+			}
+		}
+
+		if posIndex == -1 {
+			fmt.Printf("`%s`: couldn't find dose matching position \"%v\"\n", ModeRmPosition, options.RmPosition)
+			return
+		}
+
+		doses = SliceRemoveIndex(doses, posIndex)
 
 		if !saveFileWrapper(doses) {
 			return
