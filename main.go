@@ -426,7 +426,7 @@ func main() {
 	switch options.Mode {
 	case ModeSave:
 		if !saveFileWrapper(doses) {
-			fmt.Printf("Failed to save one or more doses files!\n")
+			fmt.Printf("`%s`: failed to save one or more doses files!\n", ModeSave)
 		}
 	case ModeGet:
 		fmt.Printf("%s", getDosesFmt(doses))
@@ -470,7 +470,7 @@ func main() {
 
 		loc, err := time.LoadLocation(timezone)
 		if err != nil {
-			fmt.Printf("failed to load location: %v\n", err)
+			fmt.Printf("`%s`: failed to load location: %v\n", ModeAdd, err)
 			return
 		}
 
@@ -487,7 +487,7 @@ func main() {
 			}
 
 			if n1 == len(dLayouts)-1 {
-				fmt.Printf("failed to parse \"%s\" with any of the layouts \"[%s]\"\n", *aDate, strings.Join(dLayouts, ", "))
+				fmt.Printf("`%s`: failed to parse \"%s\" with any of the layouts \"[%s]\"\n", ModeAdd, *aDate, strings.Join(dLayouts, ", "))
 				return
 			}
 		}
@@ -507,7 +507,7 @@ func main() {
 			}
 
 			if n1 == len(tLayouts)-1 {
-				fmt.Printf("failed to parse \"%s\" with any of the layouts \"[%s]\"\n", *aTime, strings.Join(tLayouts, ", "))
+				fmt.Printf("`%s`: failed to parse \"%s\" with any of the layouts \"[%s]\"\n", ModeAdd, *aTime, strings.Join(tLayouts, ", "))
 				return
 			}
 		}
