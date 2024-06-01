@@ -69,7 +69,7 @@ type UserPreferences struct {
 type Mode int64
 
 const (
-	ModeGet = iota
+	ModeGet Mode = iota
 	ModeAdd
 	ModeRm
 	ModeSave
