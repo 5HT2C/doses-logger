@@ -431,15 +431,14 @@ func main() {
 	case ModeGet:
 		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeRm:
-		pos, posIndex := -1, -1
-
-		for n1, dose := range doses {
-			if dose.Position > pos {
-				pos = dose.Position
-				posIndex = n1
-			}
+		if len(doses) == 0 {
+			fmt.Printf("`%s` is set but there are no doses to remove?\n", ModeRm)
+			return
 		}
 
+		pos, posIndex := lastPosition(doses)
+
+		// No doses found, shouldn't be possible but try anyway?
 		if pos == -1 || posIndex == -1 {
 			doses = SliceRemoveIndex(doses, len(doses)-1)
 		} else if len(doses) > posIndex {
@@ -529,8 +528,9 @@ func main() {
 			*aRoa = caseFmt(*aRoa)
 		}
 
+		pos, _ := lastPosition(doses)
 		dose := Dose{
-			Position:  lastPosition(doses),
+			Position:  pos + 1,
 			Timestamp: t,
 			Timezone:  timezone,
 			Date:      t.Format("2006/01/02"),
@@ -741,15 +741,17 @@ func caseFmt(s string) string {
 	return s
 }
 
-func lastPosition(doses []Dose) int {
-	n := -1
-	for _, d := range doses {
-		if d.Position > n {
-			n = d.Position
+func lastPosition(doses []Dose) (int, int) {
+	pos, posIndex := -1, -1
+
+	for n, d := range doses {
+		if d.Position > pos {
+			pos = d.Position
+			posIndex = n
 		}
 	}
 
-	return n + 1
+	return pos, posIndex
 }
 
 func saveFileWrapper(doses []Dose) (r bool) {
