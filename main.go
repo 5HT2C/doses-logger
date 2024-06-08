@@ -121,6 +121,7 @@ type DisplayOptions struct {
 	FilterInvert bool
 	Filter       string
 	FilterRegex  *regexp.Regexp
+	LastAddedPos int // when Mode is ModeAdd this is set after adding a dose
 	Show         int
 	RmPosition   int
 	Timezone     string
@@ -166,6 +167,7 @@ func (d *DisplayOptions) Parse() {
 		StartAtTop:   *optS,
 		FilterInvert: *optV,
 		Filter:       *optG,
+		LastAddedPos: -1,
 		Show:         showLast,
 		RmPosition:   *optRmP,
 		Timezone:     timezone,
@@ -983,7 +985,8 @@ func getDosesOptions(doses []Dose, options *DisplayOptions) []Dose {
 		dosesFiltered = append(dosesFiltered, dosesTrans...)
 	} else {
 		for _, d := range dosesTrans {
-			if options.FilterInvert != options.FilterRegex.MatchString(d.StringOptions(options)) {
+			if (options.LastAddedPos != -1 && options.LastAddedPos == d.Position) ||
+				options.FilterInvert != options.FilterRegex.MatchString(d.StringOptions(options)) {
 				dosesFiltered = append(dosesFiltered, d)
 			}
 		}
