@@ -26,8 +26,7 @@ var (
 	dosageRegex = regexp.MustCompile("([0-9.]+)([ -_]+)?([μµ]g|mg|g|kg|u|x|mL|)?")
 
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
-	options  = &DisplayOptions{}
-	timeZero = time.Unix(0, 0)
+	options = &DisplayOptions{}
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
 	urlToken = flag.String("token", "", "token for fs-over-http (default $FOH_TOKEN or $FOH_SERVER_AUTH from env)")
@@ -199,6 +198,7 @@ type Dose struct { // timezone,date,time,dosage,drug,roa,note
 }
 
 func (d Dose) ParsedTime() (time.Time, error) {
+	timeZero := time.Unix(0, 0)
 	loc, err := time.LoadLocation(d.Timezone)
 	if err != nil {
 		return timeZero, err
