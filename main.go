@@ -557,18 +557,20 @@ func main() {
 		pTime := "0000"
 
 		switch len(*aDate) {
-		case 5: // 2006-01-02
+		case 5: // 01-02 → 2006-01-02
 			pDate = t.Format("2006-") + *aDate
-		case 4: // 20060102
+		case 4: // 0102  → 20060102
 			pDate = t.Format("2006") + *aDate
-		case 0: // 20060102
-			pDate = t.Format("20060102")
+		case 2: // 02    → 2006/01/02
+			pDate = t.Format("2006/01/") + *aDate
+		case 0: // unset → 2006/01/02 (first in LayoutFormat, so it parses the fastest)
+			pDate = t.Format("2006/01/02")
 		default: // determined by user, will try to parse
 			pDate = *aDate
 		}
 
 		switch len(*aTime) {
-		case 0: // 1504
+		case 0: // unset → 1504 (only one matching len == 4, so it parses the fastest)
 			pTime = t.Format("1504")
 		default: // determined by user, will try to parse
 			pTime = *aTime
@@ -598,7 +600,7 @@ func main() {
 
 		// Parse -date flag, using 00:00 as the suffix
 		if ts, err := parseLayout(pDate, &TimestampLayout{
-			[]LayoutFormat{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006", "20060102", "01-02", "0102"},
+			[]LayoutFormat{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006", "20060102", "01-02", "0102", "02"},
 			WrapFormat{Suffix: "1504"}, WrapFormat{Suffix: "0000"},
 		}); err != nil {
 			fmt.Printf("%v\n", err)
