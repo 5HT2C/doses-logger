@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -26,8 +27,6 @@ var (
 
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
 	options  = &DisplayOptions{}
-	dLayouts = []string{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006"}
-	tLayouts = []string{"3:04pm", "15:04", "3:04", "1504"}
 	timeZero = time.Unix(0, 0)
 
 	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
@@ -98,6 +97,18 @@ func (m Mode) String() string {
 	default:
 		return "-default"
 	}
+}
+
+type LayoutFormat string
+type WrapFormat struct {
+	Prefix string
+	Suffix string
+}
+
+type TimestampLayout struct {
+	Formats []LayoutFormat
+	Layout  WrapFormat
+	Value   WrapFormat
 }
 
 type DisplayOptions struct {
@@ -484,6 +495,7 @@ func main() {
 
 		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeAdd:
+		// Ensure -drug is set
 		if *aDrug == "" {
 			fmt.Printf("`-drug` is not set!\n")
 			return
@@ -491,6 +503,8 @@ func main() {
 			*aDrug = caseFmt(*aDrug)
 		}
 
+		//
+		// Get timezone from most chronologically-recent dose, if flag isn't set
 		timezone := "America/Toronto" // Default timezone. TODO: Proper handling / ask user for default.
 		if *aTimezone == "" {
 			if len(doses) > 0 {
@@ -506,44 +520,76 @@ func main() {
 			return
 		}
 
+		//
+		// Parse provided -date and -time flags, using pre-defined valid layouts
 		t := time.Now().In(loc)
+		pDate := "00000101"
+		pTime := "0000"
 
-		if *aDate == "" {
-			*aDate = time.Now().In(loc).Format("2006/01/02")
+		switch len(*aDate) {
+		case 5: // 2006-01-02
+			pDate = t.Format("2006-") + *aDate
+		case 4: // 20060102
+			pDate = t.Format("2006") + *aDate
+		case 0: // 20060102
+			pDate = t.Format("20060102")
+		default: // determined by user, will try to parse
+			pDate = *aDate
 		}
 
-		for n1, l := range dLayouts {
-			if tp, err := time.ParseInLocation(l+"15:04", *aDate+"00:00", loc); err == nil {
-				t = tp
-				break
-			}
-
-			if n1 == len(dLayouts)-1 {
-				fmt.Printf("`%s`: failed to parse \"%s\" with any of the layouts \"[%s]\"\n", ModeAdd, *aDate, strings.Join(dLayouts, ", "))
-				return
-			}
+		switch len(*aTime) {
+		case 0: // 1504
+			pTime = t.Format("1504")
+		default: // determined by user, will try to parse
+			pTime = *aTime
 		}
 
-		if *aTime == "" {
-			*aTime = time.Now().In(loc).Format("15:04")
+		parseLayout := func(p string, l *TimestampLayout) (*time.Time, error) {
+			for _, f := range l.Formats {
+				// faster than waiting for time.ParseInLocation to fail
+				if len(p) != len(f) {
+					continue
+				}
+
+				if ts, err := time.ParseInLocation(
+					fmt.Sprintf("%s%s%s", l.Layout.Prefix, f, l.Layout.Suffix),
+					fmt.Sprintf("%s%s%s", l.Value.Prefix, p, l.Value.Suffix),
+					loc,
+				); err == nil {
+					return &ts, nil
+				}
+			}
+
+			return nil, errors.New(fmt.Sprintf(
+				"`%s`: failed to parse \"%s\" using layouts: %s",
+				ModeAdd, p, strings.Join(strings.Fields(fmt.Sprint(l.Formats)), ", "),
+			))
 		}
 
-		for n1, l := range tLayouts {
-			if len(*aTime) != len(l) { // slight efficiency boost instead of waiting for time.ParseInLocation to fail
-				continue
-			}
-
-			if tp, err := time.ParseInLocation("2006/01/02"+l, t.Format("2006/01/02")+*aTime, loc); err == nil {
-				t = tp
-				break
-			}
-
-			if n1 == len(tLayouts)-1 {
-				fmt.Printf("`%s`: failed to parse \"%s\" with any of the layouts \"[%s]\"\n", ModeAdd, *aTime, strings.Join(tLayouts, ", "))
-				return
-			}
+		// Parse -date flag, using 00:00 as the suffix
+		if ts, err := parseLayout(pDate, &TimestampLayout{
+			[]LayoutFormat{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006", "20060102", "01-02", "0102"},
+			WrapFormat{Suffix: "1504"}, WrapFormat{Suffix: "0000"},
+		}); err != nil {
+			fmt.Printf("%v\n", err)
+			return
+		} else {
+			t = *ts
 		}
 
+		// Parse -time flag, using the date we found as a prefix
+		if ts, err := parseLayout(pTime, &TimestampLayout{
+			[]LayoutFormat{"3:04pm", "15:04", "3:04", "1504"},
+			WrapFormat{Prefix: "20060102"}, WrapFormat{Prefix: t.Format("20060102")},
+		}); err != nil {
+			fmt.Printf("%v\n", err)
+			return
+		} else {
+			t = *ts
+		}
+
+		//
+		// Parse -a and -d flags for dosage and drug
 		// Replace mathematical symbols in dosage with their greek variation:
 		dosage := *aDosage
 		dosage = strings.ReplaceAll(dosage, "µ", "μ") // U+00B5 → U+03BC
@@ -576,7 +622,7 @@ func main() {
 
 		doses = append(doses, dose)
 
-		// Sort by date and time
+		// Re-sort by chronological date and time, to handle adding a dose in the past
 		sort.Slice(doses, func(i, j int) bool {
 			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
 		})
