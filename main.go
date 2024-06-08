@@ -158,7 +158,7 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeGet
 	}
 
-	// If we're not in a stat mode and the user hasn't set showLast, set it to 5 as a sane default
+	// If we're not in a stat mode and the user hasn't set showLast, set it to 5 as a sensible default
 	showLast := *optN
 	if showLast == 0 && mode != ModeStatTop && mode != ModeStatAvg {
 		showLast = 5
@@ -525,7 +525,7 @@ func main() {
 
 		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeAdd:
-		// Ensure -drug is set
+		// Ensure `-drug` is set
 		if *aDrug == "" {
 			fmt.Printf("`-drug` is not set!\n")
 			return
@@ -534,7 +534,7 @@ func main() {
 		}
 
 		//
-		// Get timezone from most chronologically-recent dose, if flag isn't set
+		// Get timezone from the most chronologically recent dose; if `-timezone` isn't set
 		if options.Timezone == "" {
 			if len(doses) > 0 {
 				options.Timezone = doses[len(doses)-1].Timezone
@@ -551,7 +551,7 @@ func main() {
 		}
 
 		//
-		// Parse provided -date and -time flags, using pre-defined valid layouts
+		// Parse provided `-date` and `-time` flags, using pre-defined valid layouts
 		t := time.Now().In(loc)
 		pDate := "00000101"
 		pTime := "0000"
@@ -598,7 +598,7 @@ func main() {
 			))
 		}
 
-		// Parse -date flag, using 00:00 as the suffix
+		// Parse `-date` flag, using 00:00 as the suffix
 		if ts, err := parseLayout(pDate, &TimestampLayout{
 			[]LayoutFormat{"2006/01/02", "2006-01-02", "01/02/2006", "01-02-2006", "20060102", "01-02", "0102", "02"},
 			WrapFormat{Suffix: "1504"}, WrapFormat{Suffix: "0000"},
@@ -609,7 +609,7 @@ func main() {
 			t = *ts
 		}
 
-		// Parse -time flag, using the date we found as a prefix
+		// Parse `-time` flag, using the date we found as a prefix
 		if ts, err := parseLayout(pTime, &TimestampLayout{
 			[]LayoutFormat{"3:04pm", "15:04", "3:04", "1504"},
 			WrapFormat{Prefix: "20060102"}, WrapFormat{Prefix: t.Format("20060102")},
@@ -747,7 +747,7 @@ func main() {
 			unitSize := ParseUnit(stat.Drug, unitLabel)
 			stat.Unit = unitSize
 
-			// Only set original unit if it hasn't been set before
+			// Only set `stat.OriginalUnit` if it hasn't been set before
 			if stat.OriginalUnit == DoseUnitSizeDefault {
 				stat.OriginalUnit = unitSize
 
@@ -787,11 +787,11 @@ func main() {
 			statsOrdered = append(statsOrdered, v)
 		}
 
-		// Sort by total doses
-		// If total doses is the same, sort by total amount
-		// If total amount is the same, sort by drug name being alphabetical
-		// If drug name starts with a unicode character, sort first
-		// Always ensures that the Total / Average stat is always at the bottom
+		// Sort by total doses.
+		// If TotalDoses is the same, sort by TotalAmount.
+		// If TotalAmount is the same, sort by drug name as alphabetical.
+		// If the drug name starts with a Unicode character, sort first.
+		// Always ensures that the Total / Average stat is always at the bottom.
 		sort.SliceStable(statsOrdered, func(i, j int) bool {
 			if statsOrdered[i].TotalDoses == statsOrdered[j].TotalDoses {
 				if statsOrdered[i].TotalAmount*statsOrdered[i].Unit.F() == statsOrdered[j].TotalAmount*statsOrdered[j].Unit.F() {
@@ -817,7 +817,7 @@ func main() {
 
 		// stat.TotalAmount is in MICROGRAMS right now
 		for k, v := range statsOrdered {
-			// convert total amount in MICROGRAMS to correct unit
+			// convert TotalAmount in MICROGRAMS to correct unit
 			v.ToUnit(v.OriginalUnit)
 
 			// convert total amount to average amount
@@ -874,9 +874,12 @@ func caseFmt(s string) string {
 		return s
 	}
 
-	// Removes greek characters, which means strings with lowercase greek and uppercase latin will be treated as all uppercase.
-	// This is useful for something like α-PHP, where otherwise caser.String(s) would return A-Php, which is not what we want.
-	// Initially I implemented this as a function that replaced lowercase greek with upper, but it's more efficient to simply remove the greek.
+	// Removes greek characters,
+	// which means strings containing lowercase greek & uppercase latin will be treated as all uppercase.
+	// This is useful for something like α-PHP,
+	// where otherwise caser.String(s) would return A-Php, which is not what we want.
+	// Initially, I implemented this as a function that replaced lowercase greek with upper,
+	// but it's more efficient to simply remove the greek.
 	removeGreek := func(s string) string {
 		sr := []rune(s)
 
