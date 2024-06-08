@@ -123,6 +123,7 @@ type DisplayOptions struct {
 	FilterRegex  *regexp.Regexp
 	Show         int
 	RmPosition   int
+	Timezone     string
 }
 
 func (d *DisplayOptions) Parse() {
@@ -150,6 +151,11 @@ func (d *DisplayOptions) Parse() {
 		showLast = 5
 	}
 
+	timezone := ""
+	if *aTimezone != "" {
+		timezone = *aTimezone
+	}
+
 	options = &DisplayOptions{
 		Mode:         mode,
 		Json:         *optJ,
@@ -162,6 +168,7 @@ func (d *DisplayOptions) Parse() {
 		Filter:       *optG,
 		Show:         showLast,
 		RmPosition:   *optRmP,
+		Timezone:     timezone,
 	}
 }
 
@@ -505,16 +512,16 @@ func main() {
 
 		//
 		// Get timezone from most chronologically-recent dose, if flag isn't set
-		timezone := "America/Toronto" // Default timezone. TODO: Proper handling / ask user for default.
-		if *aTimezone == "" {
+		if options.Timezone == "" {
 			if len(doses) > 0 {
-				timezone = doses[len(doses)-1].Timezone
+				options.Timezone = doses[len(doses)-1].Timezone
+			} else {
+				fmt.Printf("`-timezone` is not set and no doses with a timezone were found! You must set a timezone to add doses first\n")
+				return
 			}
-		} else {
-			timezone = *aTimezone
 		}
 
-		loc, err := time.LoadLocation(timezone)
+		loc, err := time.LoadLocation(options.Timezone)
 		if err != nil {
 			fmt.Printf("`%s`: failed to load location: %v\n", ModeAdd, err)
 			return
@@ -611,7 +618,7 @@ func main() {
 		dose := Dose{
 			Position:  pos + 1,
 			Timestamp: t,
-			Timezone:  timezone,
+			Timezone:  options.Timezone,
 			Date:      t.Format("2006/01/02"),
 			Time:      t.Format("15:04"),
 			Dosage:    dosage,
