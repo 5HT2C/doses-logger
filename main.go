@@ -458,9 +458,7 @@ func main() {
 
 	switch options.Mode {
 	case ModeSave:
-		if !saveFileWrapper(doses) {
-			fmt.Printf("`%s`: failed to save one or more doses files!\n", ModeSave)
-		}
+		saveFileWrapper(doses, true)
 	case ModeGet:
 		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeRm:
@@ -478,7 +476,7 @@ func main() {
 			doses = SliceRemoveIndex(doses, posIndex)
 		}
 
-		if !saveFileWrapper(doses) {
+		if !saveFileWrapper(doses, false) {
 			return
 		}
 
@@ -503,7 +501,7 @@ func main() {
 
 		doses = SliceRemoveIndex(doses, posIndex)
 
-		if !saveFileWrapper(doses) {
+		if !saveFileWrapper(doses, false) {
 			return
 		}
 
@@ -847,7 +845,21 @@ func lastPosition(doses []Dose) (int, int) {
 	return pos, posIndex
 }
 
-func saveFileWrapper(doses []Dose) (r bool) {
+func saveFileWrapper(doses []Dose, printSuccess bool) bool {
+	ok, u := saveDoseFiles(doses)
+
+	if !ok || printSuccess {
+		fmt.Printf("`%s`: saved files:\n- %s\n", options.Mode, strings.Join(u, "\n- "))
+	}
+
+	if !ok {
+		fmt.Printf("`%s`: failed to save one or more doses files!\n", options.Mode)
+	}
+
+	return ok
+}
+
+func saveDoseFiles(doses []Dose) (r bool, p []string) {
 	optionsJson := &DisplayOptions{Json: true}
 	optionsTxt := &DisplayOptions{
 		DotTime:    true,
@@ -856,31 +868,36 @@ func saveFileWrapper(doses []Dose) (r bool) {
 	}
 
 	if content, err := getDosesFmtOptions(doses, optionsJson); err == nil {
-		if !saveFile(content, *dosesUrl) {
-			return false
+		if ok, u := saveFile(content, *dosesUrl); ok {
+			p = append(p, u)
+		} else {
+			return
 		}
 
 		// Don't try to save a .txt if saving the main db failed, we don't want to imply to the user that the db is fine
 		if content, err := getDosesFmtOptions(doses, optionsTxt); err == nil {
-			return saveFile(content, strings.TrimSuffix(*dosesUrl, ".json")+".txt")
+			if ok, u := saveFile(content, strings.TrimSuffix(*dosesUrl, ".json")+".txt"); ok {
+				r = ok
+				p = append(p, u)
+			}
 		}
 	}
 
-	return false
+	return
 }
 
-func saveFile(content string, path string) (r bool) {
+func saveFile(content string, path string) (r bool, u string) {
 	if *urlToken == "" {
 		fmt.Printf("`-token` not set!\n")
-		return false
+		return
 	}
 
-	u := strings.Replace(path, "media/", "public/media/", 1)
+	u = strings.Replace(path, "media/", "public/media/", 1)
 
 	req, err := http.NewRequest("POST", u, strings.NewReader(url.Values{"content": {content}}.Encode()))
 	if err != nil {
 		fmt.Printf("failed to make new request: %v\n", err)
-		return false
+		return
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -888,7 +905,7 @@ func saveFile(content string, path string) (r bool) {
 	response, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("error posting body: %v\n%s\n", err, content)
-		return false
+		return
 	}
 
 	if response.StatusCode != 200 {
@@ -896,14 +913,14 @@ func saveFile(content string, path string) (r bool) {
 		b, err := io.ReadAll(response.Body)
 		if err != nil {
 			fmt.Printf("failed to read body (code %v): %v\n", response.StatusCode, err)
-			return false
+			return
 		}
 
 		fmt.Printf("status code was %v:\n%s\n", response.StatusCode, b)
-		return false
+		return
 	}
 
-	return true
+	return true, u
 }
 
 func loadEnv() {
