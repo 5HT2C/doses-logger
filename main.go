@@ -633,13 +633,14 @@ func main() {
 		}
 
 		doses = append(doses, dose)
+		options.LastAddedPos = dose.Position
 
 		// Re-sort by chronological date and time, to handle adding a dose in the past
 		sort.Slice(doses, func(i, j int) bool {
 			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
 		})
 
-		if !saveFileWrapper(doses) {
+		if !saveFileWrapper(doses, false) {
 			return
 		}
 
