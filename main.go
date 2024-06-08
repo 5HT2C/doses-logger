@@ -425,13 +425,18 @@ func main() {
 		return
 	}
 
+	// ModeGet, ModeTzChange, ModeTzConvert, ModeStatTop, ModeStatAvg
 	// We do not filter in ModeRm and ModeAdd for performance reasons
-	if options.Filter != "" && options.Mode != ModeRm && options.Mode != ModeAdd {
-		if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
-			fmt.Printf("-g is set but failed to compile regex: %s\n", err)
-			return
+	if options.Filter != "" {
+		if options.Mode == ModeSave {
+			fmt.Printf("-g is set but mode is %s, filter will be ignored!\n", options.Mode)
 		} else {
-			options.FilterRegex = filter
+			if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
+				fmt.Printf("-g is set but failed to compile regex: %s\n", err)
+				return
+			} else {
+				options.FilterRegex = filter
+			}
 		}
 	}
 
