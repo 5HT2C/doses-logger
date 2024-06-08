@@ -47,6 +47,8 @@ var (
 	optG   = flag.String("g", "", "Filter for text (does not apply to -add or -rm)")
 	optN   = flag.Int("n", 0, "Show last n doses, -1 = all (applied after filters)")
 
+	aChangeTz = flag.String("change-tz", "", "Change timezone (retain literal date / time) (applies to last -n doses)")
+	aConvTz   = flag.String("convert-tz", "", "Convert timezone (shift relative date / time) (applies to last -n doses)")
 	aTimezone = flag.String("timezone", "", "Set timezone")
 	aDate     = flag.String("date", "", "Set date (default \"time.Now()\")")
 	aTime     = flag.String("time", "", "Set time (default \"time.Now()\")")
@@ -72,6 +74,8 @@ const (
 	ModeAdd
 	ModeRm
 	ModeRmPosition
+	ModeTzChange
+	ModeTzConvert
 	ModeSave
 	ModeStatTop
 	ModeStatAvg
@@ -87,6 +91,10 @@ func (m Mode) String() string {
 		return "-rm"
 	case ModeRmPosition:
 		return "-rmp"
+	case ModeTzChange:
+		return "-change-tz"
+	case ModeTzConvert:
+		return "-convert-tz"
 	case ModeSave:
 		return "-save"
 	case ModeStatTop:
@@ -120,8 +128,8 @@ type DisplayOptions struct {
 	StartAtTop   bool
 	FilterInvert bool
 	Filter       string
-	FilterRegex  *regexp.Regexp
-	LastAddedPos int // when Mode is ModeAdd this is set after adding a dose
+	FilterRegex  *regexp.Regexp // generated from Filter
+	LastAddedPos int            // when Mode is ModeAdd this is set after adding a dose
 	Show         int
 	RmPosition   int
 	Timezone     string
@@ -136,6 +144,10 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeRm
 	case *optRmP > -1:
 		mode = ModeRmPosition
+	case *aChangeTz != "":
+		mode = ModeTzChange
+	case *aConvTz != "":
+		mode = ModeTzConvert
 	case *optSav:
 		mode = ModeSave
 	case *optTop:
@@ -153,7 +165,12 @@ func (d *DisplayOptions) Parse() {
 	}
 
 	timezone := ""
-	if *aTimezone != "" {
+	switch {
+	case *aChangeTz != "":
+		timezone = *aChangeTz
+	case *aConvTz != "":
+		timezone = *aConvTz
+	case *aTimezone != "":
 		timezone = *aTimezone
 	}
 
@@ -167,6 +184,7 @@ func (d *DisplayOptions) Parse() {
 		StartAtTop:   *optS,
 		FilterInvert: *optV,
 		Filter:       *optG,
+		//FilterRegex: set after Parse(),
 		LastAddedPos: -1,
 		Show:         showLast,
 		RmPosition:   *optRmP,
@@ -639,6 +657,53 @@ func main() {
 		sort.Slice(doses, func(i, j int) bool {
 			return doses[i].Timestamp.Unix() < doses[j].Timestamp.Unix()
 		})
+
+		if !saveFileWrapper(doses, false) {
+			return
+		}
+
+		fmt.Printf("%s", getDosesFmt(doses))
+	case ModeTzChange, ModeTzConvert:
+		if len(doses) == 0 {
+			fmt.Printf("`%s` is set but there are no doses to modify?\n", options.Mode)
+			return
+		}
+
+		loc, err := time.LoadLocation(options.Timezone)
+		if err != nil {
+			fmt.Printf("`%s`: failed to load location: %v\n", ModeAdd, err)
+			return
+		}
+
+		dosesFiltered := getDosesOptions(doses, options)
+		dosePositions := make(map[string]int) // [position]index
+
+		for n, d := range doses {
+			dosePositions[strconv.Itoa(d.Position)] = n
+		}
+
+		for _, d := range dosesFiltered {
+			switch options.Mode {
+			case ModeTzChange:
+				d.Timestamp = time.Date(
+					d.Timestamp.Year(), d.Timestamp.Month(), d.Timestamp.Day(),
+					d.Timestamp.Hour(), d.Timestamp.Minute(), d.Timestamp.Second(), d.Timestamp.Nanosecond(),
+					loc)
+				d.Timezone = options.Timezone
+			case ModeTzConvert:
+				d.Timestamp = d.Timestamp.In(loc)
+				d.Timezone = options.Timezone
+				d.Date = d.Timestamp.Format("2006/01/02")
+				d.Time = d.Timestamp.Format("15:04")
+			default:
+				fmt.Printf("`%s`: modifying dose in non-supported mode?? how?\n", options.Mode)
+				return
+			}
+
+			if n, ok := dosePositions[strconv.Itoa(d.Position)]; ok {
+				doses[n] = d
+			}
+		}
 
 		if !saveFileWrapper(doses, false) {
 			return
