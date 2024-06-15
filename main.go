@@ -28,13 +28,15 @@ var (
 	//prefsUrl = "http://localhost:6010/media/doses-prefs.json"
 	options = &DisplayOptions{}
 
-	dosesUrl = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
+	loadUrl  = flag.String("url", "http://localhost:6010/media/doses.json", "URL for doses.json")
+	saveUrl  = flag.String("save-url", "", "URL for saving to a different file (used with -save-filtered)")
 	urlToken = flag.String("token", "", "token for fs-over-http (default $FOH_TOKEN or $FOH_SERVER_AUTH from env)")
 
 	optAdd = flag.Bool("add", false, "Set to add a dose")
 	optRm  = flag.Bool("rm", false, "Set to remove the *last added* dose")
 	optRmP = flag.Int("rmp", -1, "Set to remove dose *by position*")
 	optSav = flag.Bool("save", false, "Run a manual save to re-generate the .txt format after a manual edit")
+	optSfl = flag.Bool("save-filtered", false, "[DANGEROUS] Respect -g when using -save, WILL overwrite doses if set")
 	optTop = flag.Bool("stat-top", false, "Set to view top statistics")
 	optAvg = flag.Bool("stat-avg", false, "Set to view average dose statistics")
 	optNts = flag.Bool("ignore-notes", false, "Set to hide notes (applies before filters)")
@@ -44,8 +46,8 @@ var (
 	optR   = flag.Bool("r", false, "Show in reverse order")
 	optS   = flag.Bool("s", false, "Start reading doses from top (applies before anything else)")
 	optV   = flag.Bool("v", false, "Inverse filter for text")
-	optG   = flag.String("g", "", "Filter for text (does not apply to -add or -rm)")
-	optN   = flag.Int("n", 0, "Show last n doses, -1 = all (applied after filters)")
+	optG   = flag.String("g", "", "Filter for text (applies in all modes)")
+	optN   = flag.Int("n", 0, "Show last n doses, -1 = all (applied after filters, does not apply to -save-filtered)")
 
 	aChangeTz = flag.String("change-tz", "", "Change timezone (retain literal date / time) (applies to last -n doses)")
 	aConvTz   = flag.String("convert-tz", "", "Convert timezone (shift relative date / time) (applies to last -n doses)")
@@ -77,6 +79,7 @@ const (
 	ModeTzChange
 	ModeTzConvert
 	ModeSave
+	ModeSaveFiltered
 	ModeStatTop
 	ModeStatAvg
 )
@@ -97,6 +100,8 @@ func (m Mode) String() string {
 		return "-convert-tz"
 	case ModeSave:
 		return "-save"
+	case ModeSaveFiltered:
+		return "-save-filtered"
 	case ModeStatTop:
 		return "-stat-top"
 	case ModeStatAvg:
@@ -133,6 +138,8 @@ type DisplayOptions struct {
 	Show         int
 	RmPosition   int
 	Timezone     string
+	LoadUrl      string // generated from loadUrl / saveUrl, used by saveDoseFiles()
+	SaveUrl      string // generated from loadUrl / saveUrl, used by saveDoseFiles()
 }
 
 func (d *DisplayOptions) Parse() {
@@ -148,6 +155,8 @@ func (d *DisplayOptions) Parse() {
 		mode = ModeTzChange
 	case *aConvTz != "":
 		mode = ModeTzConvert
+	case *optSfl:
+		mode = ModeSaveFiltered
 	case *optSav:
 		mode = ModeSave
 	case *optTop:
@@ -174,6 +183,11 @@ func (d *DisplayOptions) Parse() {
 		timezone = *aTimezone
 	}
 
+	saveUrlNew := *loadUrl
+	if len(*saveUrl) > 0 {
+		saveUrlNew = *saveUrl
+	}
+
 	options = &DisplayOptions{
 		Mode:         mode,
 		Json:         *optJ,
@@ -189,6 +203,8 @@ func (d *DisplayOptions) Parse() {
 		Show:         showLast,
 		RmPosition:   *optRmP,
 		Timezone:     timezone,
+		LoadUrl:      *loadUrl,
+		SaveUrl:      saveUrlNew,
 	}
 }
 
@@ -448,15 +464,11 @@ func main() {
 	// ModeGet, ModeTzChange, ModeTzConvert, ModeStatTop, ModeStatAvg
 	// We do not filter in ModeRm and ModeAdd for performance reasons
 	if options.Filter != "" {
-		if options.Mode == ModeSave {
-			fmt.Printf("-g is set but mode is %s, filter will be ignored!\n", options.Mode)
+		if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
+			fmt.Printf("-g is set but failed to compile regex: %s\n", err)
+			return
 		} else {
-			if filter, err := regexp.Compile(fmt.Sprintf("(?i)%s", options.Filter)); err != nil {
-				fmt.Printf("-g is set but failed to compile regex: %s\n", err)
-				return
-			} else {
-				options.FilterRegex = filter
-			}
+			options.FilterRegex = filter
 		}
 	}
 
@@ -464,7 +476,7 @@ func main() {
 	var doses []Dose
 	//var prefs MainPreferences
 
-	err = getJsonFromUrl(&doses, *dosesUrl)
+	err = getJsonFromUrl(&doses, options.LoadUrl)
 	if err != nil {
 		return // already handled
 	}
@@ -475,8 +487,22 @@ func main() {
 	//}
 
 	switch options.Mode {
-	case ModeSave:
-		saveFileWrapper(doses, true)
+	case ModeSave, ModeSaveFiltered:
+		if options.Mode == ModeSaveFiltered {
+			if options.LoadUrl == options.SaveUrl {
+				fmt.Printf("`%s` is set but you have not set `-save-url`, refusing to save filtered doses to default url in order to prevent data loss!\n", options.Mode)
+				os.Exit(64)
+				return
+			}
+
+			// Special case - we want to allow
+			options.Show = -1
+			doses = getDosesOptions(doses, options)
+		}
+
+		if !saveFileWrapper(doses, true) {
+			os.Exit(73)
+		}
 	case ModeGet:
 		fmt.Printf("%s", getDosesFmt(doses))
 	case ModeRm:
@@ -939,7 +965,7 @@ func saveDoseFiles(doses []Dose) (r bool, p []string) {
 	}
 
 	if content, err := getDosesFmtOptions(doses, optionsJson); err == nil {
-		if ok, u := saveFile(content, *dosesUrl); ok {
+		if ok, u := saveFile(content, options.SaveUrl); ok {
 			p = append(p, u)
 		} else {
 			return
@@ -947,7 +973,7 @@ func saveDoseFiles(doses []Dose) (r bool, p []string) {
 
 		// Don't try to save a .txt if saving the main db failed, we don't want to imply to the user that the db is fine
 		if content, err := getDosesFmtOptions(doses, optionsTxt); err == nil {
-			if ok, u := saveFile(content, strings.TrimSuffix(*dosesUrl, ".json")+".txt"); ok {
+			if ok, u := saveFile(content, strings.TrimSuffix(options.SaveUrl, ".json")+".txt"); ok {
 				r = ok
 				p = append(p, u)
 			}
