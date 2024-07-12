@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/thlib/go-timezone-local/tzlocal"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -228,16 +229,21 @@ func (d *DisplayOptions) MarshalJSON() ([]byte, error) {
 	})
 }
 
-type Dose struct { // timezone,date,time,dosage,drug,roa,note
-	Position  int       `json:"position"` // order added
+type TimeData struct {
 	Timestamp time.Time `json:"timestamp,omitempty"`
 	Timezone  string    `json:"timezone,omitempty"`
-	Date      string    `json:"date,omitempty"`
-	Time      string    `json:"time,omitempty"`
-	Dosage    string    `json:"dosage,omitempty"`
-	Drug      string    `json:"drug,omitempty"`
-	RoA       string    `json:"roa,omitempty"`
-	Note      string    `json:"note,omitempty"`
+}
+
+type Dose struct { // timezone,date,time,dosage,drug,roa,note
+	Position int `json:"position"` // order added, at the top so that it's marshaled as at the top
+	TimeData
+	Created *TimeData `json:"created,omitempty"`
+	Date    string    `json:"date,omitempty"`
+	Time    string    `json:"time,omitempty"`
+	Dosage  string    `json:"dosage,omitempty"`
+	Drug    string    `json:"drug,omitempty"`
+	RoA     string    `json:"roa,omitempty"`
+	Note    string    `json:"note,omitempty"`
 }
 
 func (d Dose) ParsedTime() (time.Time, error) {
@@ -570,7 +576,23 @@ func main() {
 			}
 		}
 
+		// Get timezone locations as a time.Location now
+
+		// Used for timezone in normal timestamp / timezone
 		loc, err := time.LoadLocation(options.Timezone)
+		if err != nil {
+			fmt.Printf("`%s`: failed to load location: %v\n", ModeAdd, err)
+			return
+		}
+
+		// Used for timezone in created timestamp / timezone
+		locTZ, err := tzlocal.RuntimeTZ()
+		if err != nil {
+			fmt.Printf("`%s`: failed to get system timezone: %v\n", ModeAdd, err)
+			return
+		}
+
+		locCreated, err := time.LoadLocation(locTZ)
 		if err != nil {
 			fmt.Printf("`%s`: failed to load location: %v\n", ModeAdd, err)
 			return
@@ -667,15 +689,21 @@ func main() {
 
 		pos, _ := lastPosition(doses)
 		dose := Dose{
-			Position:  pos + 1,
-			Timestamp: t,
-			Timezone:  options.Timezone,
-			Date:      t.Format("2006/01/02"),
-			Time:      t.Format("15:04"),
-			Dosage:    dosage,
-			Drug:      *aDrug,
-			RoA:       *aRoa,
-			Note:      *aNote,
+			Position: pos + 1,
+			Created: &TimeData{
+				Timestamp: time.Now().In(locCreated),
+				Timezone:  locTZ,
+			},
+			TimeData: TimeData{
+				Timestamp: t,
+				Timezone:  options.Timezone,
+			},
+			Date:   t.Format("2006/01/02"),
+			Time:   t.Format("15:04"),
+			Dosage: dosage,
+			Drug:   *aDrug,
+			RoA:    *aRoa,
+			Note:   *aNote,
 		}
 
 		doses = append(doses, dose)
