@@ -1,74 +1,74 @@
 Therapeutic
-(Cetrimide|Chlorhexidine Digluconate)
-(Loratadine|Desloratadine)
-5-HTP
-Acetylcarnitine
-Agmatine
-Albuterol
-Alcohol Defense
-Amitriptyline
-Articaine
-Aspirin
-BPC-157
-Beclometasone
-Benzocaine
-Bilastine
-Bisfluoroadrafinil
-Bisfluoromodafinil
-Bromantane.+Therapeutic
-CBD
-Caffeine
-Calcium (Carbonate|Phosphate)
-Cetirizine
-Chloride
-Cholecalciferol
-Cyproterone
-Diclofenac (Calcium|Sodium)
-Dihydroergotamine
-Domperidone
-Epinephrine
-Esomeprazole
-Estradiol (Hemihydrate|Valerate|Enanthate|Undecylate)
-Formoterol
-Gabapentin.+Therapeutic
-Ginger
-Grapefruit
-Hexapeptide-38
-Ibuprofen
-Ketamine.+Therapeutic
-Kratom.+Therapeutic
-L-Ascorbic Acid
-L-Theanine
-Lidocaine
-Lisdexamfetamine.+Therapeutic
-Lurasidone
-Magnesium (Glycinate|L-Threonate|Hydroxide|Oxide)
-Methocarbamol.+Therapeutic
-Methyl-B12
-Metoprolol
-NAC
-Naproxen
-Nicotine
-Omeprazole
-Ondansetron
-Pagoclone.+Therapeutic
-Paracetamol
-Phenylethylamine
-Picamilon
-Potassium (Citrate)
-Pregabalin.+Therapeutic
-Procaine
-Progesterone
-Propranolol
-Pseudoephedrine
-Psyllium Husk
-Quetiapine
-Rasagiline
-Rizatriptan
-Sildenafil
-Spironolactone
-Strepsil
-Tadalafil
-Terbinafine HCl
-Testosterone
-Zinc
+(Cetrimide|Chlorhexidine Digluconate),
+(Loratadine|Desloratadine),
+5-HTP,
+Acetylcarnitine,
+Agmatine,
+Albuterol,
+Alcohol Defense,
+Amitriptyline,
+Articaine,
+Aspirin,
+BPC-157,
+Beclometasone,
+Benzocaine,
+Bilastine,
+Bisfluoroadrafinil,
+Bisfluoromodafinil,
+Bromantane,.+Therapeutic
+CBD,
+Caffeine,
+Calcium (Carbonate|Phosphate),
+Cetirizine,
+Chloride,
+Cholecalciferol,
+Cyproterone,
+Diclofenac (Calcium|Sodium),
+Dihydroergotamine,
+Domperidone,
+Epinephrine,
+Esomeprazole,
+Estradiol (Hemihydrate|Valerate|Enanthate|Undecylate),
+Formoterol,
+Gabapentin,.+Therapeutic
+Ginger,
+Grapefruit,
+Hexapeptide-38,
+Ibuprofen,
+Ketamine,.+Therapeutic
+Kratom,.+Therapeutic
+L-Ascorbic Acid,
+L-Theanine,
+Lidocaine,
+Lisdexamfetamine,.+Therapeutic
+Lurasidone,
+Magnesium (Glycinate|L-Threonate|Hydroxide|Oxide),
+Methocarbamol,.+Therapeutic
+Methyl-B12,
+Metoprolol,
+NAC,
+Naproxen,
+Nicotine,
+Omeprazole,
+Ondansetron,
+Pagoclone,.+Therapeutic
+Paracetamol,
+Phenylethylamine,
+Picamilon,
+Potassium (Citrate),
+Pregabalin,.+Therapeutic
+Procaine,
+Progesterone,
+Propranolol,
+Pseudoephedrine,
+Psyllium Husk,
+Quetiapine,
+Rasagiline,
+Rizatriptan,
+Sildenafil,
+Spironolactone,
+Strepsil,
+Tadalafil,
+Terbinafine HCl,
+Testosterone,
+Zinc,
