@@ -1,5 +1,6 @@
 Therapeutic
 (Cetrimide|Chlorhexidine Digluconate)
+(Loratadine|Desloratadine)
 5-HTP
 Acetylcarnitine
 Agmatine
@@ -39,7 +40,6 @@ L-Ascorbic Acid
 L-Theanine
 Lidocaine
 Lisdexamfetamine.+Therapeutic
-Loratadine
 Lurasidone
 Magnesium (Glycinate|L-Threonate|Hydroxide|Oxide)
 Methocarbamol.+Therapeutic
