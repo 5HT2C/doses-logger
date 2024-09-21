@@ -601,7 +601,7 @@ func main() {
 		//
 		// Parse provided `-date` and `-time` flags, using pre-defined valid layouts
 		t := time.Now().In(loc)
-		pDate := "00000101"
+		pDate := "00000101" // default to earliest possible time.Time()
 		pTime := "0000"
 
 		switch len(*aDate) {
