@@ -44,7 +44,7 @@ L-Theanine,
 Lidocaine,
 Lisdexamfetamine,.+Therapeutic
 Lurasidone,
-Magnesium (Glycinate|L-Threonate|Hydroxide|Oxide),
+Magnesium (Glycinate|L-Threonate|Hydroxide|Oxide|Citrate),
 Methocarbamol,.+Therapeutic
 Methyl-B12,
 Metoprolol,
